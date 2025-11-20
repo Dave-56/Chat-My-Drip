@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>ChatMyDrip | AI Stylist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'drip-black': '#0f0f0f',
+              'drip-dark': '#1a1a1a',
+              'drip-accent': '#CB6CE6', // Neon Purple
+              'drip-lime': '#D4FF00',   // Acid Green
+              'drip-gray': '#2A2A2A',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              display: ['Oswald', 'sans-serif'], // You'd normally import this, but we'll stick to standard fonts styled boldly
+            },
+            animation: {
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'slide-up': 'slideUp 0.5s ease-out',
+            },
+            keyframes: {
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@700&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #0f0f0f;
+        color: white;
+        overflow-x: hidden;
+      }
+      h1, h2, h3, .font-display {
+        font-family: 'Oswald', sans-serif;
+      }
+      /* Hide scrollbar for cleaner UI */
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

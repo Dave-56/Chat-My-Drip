@@ -1,0 +1,7 @@
+{
+  "name": "ChatMyDrip",
+  "description": "Your personal AI fashion stylist. Upload a fit check, get a roast, rating, and advice instantly.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
