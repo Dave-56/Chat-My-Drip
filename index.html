@@ -36,15 +36,28 @@
     </script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@700&display=swap');
-      body {
+      
+      /* Nuclear Option: Lock the document to prevent bounce and scroll issues */
+      html, body {
         font-family: 'Inter', sans-serif;
         background-color: #0f0f0f;
         color: white;
-        overflow-x: hidden;
+        height: 100%;
+        width: 100%;
+        overflow: hidden; /* Prevents the page itself from scrolling */
+        position: fixed; /* Forces the body to stay in place */
+        touch-action: none; /* Prevents some native gestures */
       }
+      
+      #root {
+        height: 100%;
+        width: 100%;
+      }
+
       h1, h2, h3, .font-display {
         font-family: 'Oswald', sans-serif;
       }
+      
       /* Hide scrollbar for cleaner UI */
       ::-webkit-scrollbar {
         width: 0px;

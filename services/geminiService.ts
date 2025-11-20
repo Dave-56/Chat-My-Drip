@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
 import { AnalysisResult } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -79,4 +79,46 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
     console.error("Error analyzing fit:", error);
     throw error;
   }
+};
+
+export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): Chat => {
+  return genAI.chats.create({
+    model: "gemini-2.5-flash",
+    history: [
+      {
+        role: "user",
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Image,
+            },
+          },
+          {
+            text: "Here is my outfit. Please be ready to answer follow-up questions about it."
+          }
+        ],
+      },
+      {
+        role: "model",
+        parts: [
+          {
+            text: `I've analyzed your fit. I rated it ${previousAnalysis.score}/10. Vibe: ${previousAnalysis.vibe}. Verdict: ${previousAnalysis.verdict}. Hits: ${previousAnalysis.hits.join(', ')}. Misses: ${previousAnalysis.misses.join(', ')}.`
+          }
+        ]
+      }
+    ],
+    config: {
+      systemInstruction: `You are a Gen Z fashion stylist having a text conversation with a user about their outfit. 
+      You have already analyzed their photo. The user sees your previous analysis and might ask for clarification (e.g., "Why is the white basic?").
+      
+      Rules:
+      1. Be conversational, helpful, and trendy. Use slang (drip, no cap, bet, slay) but don't overdo it.
+      2. Explain your styling choices clearly.
+      3. If they ask how to fix something, give specific examples (brands, types of items).
+      4. Keep responses relatively short (max 2-3 sentences unless explaining a complex style).
+      5. Do NOT return JSON. Return plain text.
+      `,
+    },
+  });
 };

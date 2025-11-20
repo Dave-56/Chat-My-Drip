@@ -12,6 +12,7 @@ export enum AppState {
   PREVIEW = 'PREVIEW',
   ANALYZING = 'ANALYZING',
   RESULT = 'RESULT',
+  CHAT = 'CHAT',
   ERROR = 'ERROR',
 }
 
@@ -19,4 +20,10 @@ export interface UploadedImage {
   base64: string; // Raw base64 data without prefix for API
   previewUrl: string; // With prefix for <img> src
   mimeType: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
 }

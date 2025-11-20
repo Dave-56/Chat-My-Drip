@@ -1,37 +1,78 @@
 import React from 'react';
-import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag } from 'lucide-react';
+import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle } from 'lucide-react';
 import { AnalysisResult, UploadedImage } from '../types';
 
 interface ResultsProps {
   image: UploadedImage;
   data: AnalysisResult;
   onReset: () => void;
+  onChat: () => void;
 }
 
-export const Results: React.FC<ResultsProps> = ({ image, data, onReset }) => {
+// Helper to convert base64 data URL to File object
+const dataURLtoFile = (dataurl: string, filename: string): File => {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
+export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat }) => {
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
 
-  const handleShare = async () => {
+  const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
+  const shareUrl = window.location.href;
+
+  const handleNativeShare = async () => {
+    // Try sharing image + text
+    const file = dataURLtoFile(image.previewUrl, 'chatmydrip-result.png');
+    
+    // Check if the browser supports sharing files
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'ChatMyDrip Result',
+          text: shareText,
+        });
+        return;
+      } catch (error) {
+        console.log('Error sharing file', error);
+      }
+    }
+    
+    // Fallback to text share if file share fails or isn't supported
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'ChatMyDrip Result',
-          text: `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" Check my fit!`,
-          url: window.location.href,
+          text: shareText,
+          url: shareUrl,
         });
       } catch (error) {
-        console.log('Error sharing', error);
+        console.log('Error sharing text', error);
       }
     } else {
       alert("Screenshot this to share!");
     }
   };
 
+  const handleTwitterShare = () => {
+    const text = encodeURIComponent(`${shareText}\n\nCheck my fit:`);
+    const url = encodeURIComponent(shareUrl);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+  };
+
   return (
-    <div className="flex flex-col h-full animate-slide-up pb-20">
+    <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar">
       {/* Header Image & Score Overlay */}
-      <div className="relative w-full aspect-square">
+      <div className="relative w-full aspect-square shrink-0">
         <img 
           src={image.previewUrl} 
           alt="Your Fit" 
@@ -54,13 +95,30 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset }) => {
       </div>
 
       {/* Detailed Cards */}
-      <div className="px-6 -mt-4 relative z-10 space-y-4">
+      <div className="px-6 -mt-4 relative z-10 space-y-4 pb-20">
         
         {/* Verdict Card */}
         <div className="bg-drip-dark p-5 rounded-xl border border-drip-gray shadow-lg">
           <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-2">THE VERDICT</p>
           <p className="text-xl font-bold text-white italic">"{data.verdict}"</p>
         </div>
+
+        {/* Chat CTA */}
+        <button
+          onClick={onChat}
+          className="w-full bg-gradient-to-r from-drip-accent to-purple-600 text-white p-4 rounded-xl font-bold font-display flex items-center justify-between group hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20"
+        >
+          <div className="flex items-center gap-3">
+             <div className="bg-white/20 p-2 rounded-full">
+                <MessageCircle size={20} />
+             </div>
+             <div className="text-left">
+                <p className="text-sm font-normal opacity-90">Have questions?</p>
+                <p className="text-lg leading-none">ASK THE STYLIST</p>
+             </div>
+          </div>
+          <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+        </button>
 
         {/* Hits */}
         <div className="bg-drip-dark p-5 rounded-xl border border-drip-gray">
@@ -107,21 +165,36 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset }) => {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-4 pt-4">
+        <div className="pt-4 space-y-3">
+          {/* Primary Share Button (Native - Instagram/Generic) */}
           <button 
-            onClick={handleShare}
-            className="flex-1 bg-white text-black font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-200 transition-colors"
+            onClick={handleNativeShare}
+            className="w-full bg-white text-black font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-200 transition-colors text-lg shadow-lg shadow-white/10"
           >
-            <Share2 size={20} />
-            SHARE
+            <Share2 size={24} />
+            SHARE RESULT
           </button>
-          <button 
-            onClick={onReset}
-            className="flex-1 bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors"
-          >
-            <RefreshCw size={20} />
-            NEXT FIT
-          </button>
+
+          {/* Secondary Row */}
+          <div className="flex gap-3">
+            <button 
+              onClick={handleTwitterShare}
+              className="flex-1 bg-[#1DA1F2] text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity"
+            >
+              <Twitter size={20} fill="currentColor" />
+              TWEET
+            </button>
+            <button 
+              onClick={onReset}
+              className="flex-1 bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors"
+            >
+              <RefreshCw size={20} />
+              NEXT FIT
+            </button>
+          </div>
+          <p className="text-center text-xs text-gray-500 mt-2">
+            Pro tip: Use "Share Result" for Instagram Stories
+          </p>
         </div>
       </div>
     </div>
