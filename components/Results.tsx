@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle, Bookmark, BookmarkCheck, Home } from 'lucide-react';
+import React from 'react';
+import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle, Home } from 'lucide-react';
 import { AnalysisResult, UploadedImage } from '../types';
-import { saveOutfit, isOutfitSaved } from '../utils/outfitStorage';
 
 interface ResultsProps {
   image: UploadedImage;
@@ -25,23 +24,8 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 };
 
 export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
-  const [isSaved, setIsSaved] = useState(isOutfitSaved(image.previewUrl));
-  const [isSaving, setIsSaving] = useState(false);
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
-
-  const handleSaveOutfit = async () => {
-    try {
-      setIsSaving(true);
-      await saveOutfit(image, data);
-      setIsSaved(true);
-    } catch (error: any) {
-      console.error('Error saving outfit:', error);
-      alert(error.message || 'Failed to save outfit. Storage might be full.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
   // Use production URL for sharing
@@ -145,23 +129,6 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
           <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
         </button>
 
-        {/* Save Outfit Button */}
-        {!isSaved && (
-          <button
-            onClick={handleSaveOutfit}
-            disabled={isSaving}
-            className="w-full bg-drip-dark text-white p-4 rounded-xl font-bold font-display flex items-center justify-center gap-2 border border-drip-gray hover:bg-drip-gray transition-colors disabled:opacity-50"
-          >
-            <Bookmark size={20} />
-            {isSaving ? 'SAVING...' : 'SAVE OUTFIT'}
-          </button>
-        )}
-        {isSaved && (
-          <div className="w-full bg-drip-lime/10 text-drip-lime p-4 rounded-xl font-bold font-display flex items-center justify-center gap-2 border border-drip-lime/30">
-            <BookmarkCheck size={20} />
-            SAVED
-          </div>
-        )}
 
         {/* Hits */}
         <div className="bg-drip-dark p-5 rounded-xl border border-drip-gray">

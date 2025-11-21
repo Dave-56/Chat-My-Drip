@@ -8,7 +8,7 @@ import { MyFits } from './components/MyFits';
 import { SavedOutfitView } from './components/SavedOutfitView';
 import { analyzeFit, createStylistChat } from './services/geminiService';
 import { AppState, UploadedImage, AnalysisResult, SavedOutfit } from './types';
-import { getSavedOutfit } from './utils/outfitStorage';
+import { getSavedOutfit, saveOutfit } from './utils/outfitStorage';
 import { AlertTriangle } from 'lucide-react';
 import { Chat } from "@google/genai";
 
@@ -34,6 +34,15 @@ const App: React.FC = () => {
     try {
       const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType);
       setResult(analysis);
+      
+      // Auto-save outfit when results are ready
+      try {
+        await saveOutfit(selectedImage, analysis);
+      } catch (saveError) {
+        // Log but don't block UI if save fails
+        console.warn('Failed to auto-save outfit:', saveError);
+      }
+      
       setView(AppState.RESULT);
     } catch (err) {
       console.error(err);

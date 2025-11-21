@@ -44,6 +44,7 @@ const compressImage = (dataUrl: string): Promise<string> => {
 
 /**
  * Auto-assign outfit to collections based on vibe and score
+ * NOTE: This function must be called after addOutfitToCollection and createCollection are defined
  */
 const autoAssignToCollections = (outfitId: string, analysis: AnalysisResult): void => {
   const collections = getCollections();
@@ -111,17 +112,48 @@ const autoAssignToCollections = (outfitId: string, analysis: AnalysisResult): vo
     c.name.toLowerCase().includes(analysis.vibe.toLowerCase())
   );
 
-  if (!existingVibeCollection && analysis.vibe) {
-    // Create a new collection for this vibe
-    const newCollection = createCollection(analysis.vibe, '#CB6CE6');
+  if (!existingVibeCollection && analysis.vibe && analysis.vibe.trim()) {
+    // Manually create collection (to avoid forward reference issues)
+    const collections = getCollections();
+    const newCollection: Collection = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: analysis.vibe,
+      color: '#CB6CE6',
+      createdAt: Date.now(),
+      outfitIds: [],
+    };
+    collections.push(newCollection);
+    saveCollections(collections);
     collectionsToAdd.push(newCollection.id);
   } else if (existingVibeCollection) {
     collectionsToAdd.push(existingVibeCollection.id);
   }
 
-  // Add outfit to all matched collections
+  // Add outfit to all matched collections (manually to avoid forward reference)
   collectionsToAdd.forEach(collectionId => {
-    addOutfitToCollection(outfitId, collectionId);
+    try {
+      const collections = getCollections();
+      const collection = collections.find(c => c.id === collectionId);
+      if (collection && !collection.outfitIds.includes(outfitId)) {
+        collection.outfitIds.push(outfitId);
+        saveCollections(collections);
+      }
+
+      // Update outfit's collectionIds
+      const outfits = getSavedOutfits();
+      const outfit = outfits.find(o => o.id === outfitId);
+      if (outfit) {
+        if (!outfit.collectionIds) {
+          outfit.collectionIds = [];
+        }
+        if (!outfit.collectionIds.includes(collectionId)) {
+          outfit.collectionIds.push(collectionId);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(outfits));
+        }
+      }
+    } catch (e) {
+      console.warn('Could not add outfit to collection:', collectionId);
+    }
   });
 };
 
@@ -163,7 +195,7 @@ export const saveOutfit = async (image: UploadedImage, analysis: AnalysisResult,
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
       
-      // Auto-assign to collections based on vibe and score
+      // Auto-assign to collections based on vibe and score (after save succeeds)
       autoAssignToCollections(outfit.id, analysis);
       
     } catch (error: any) {
