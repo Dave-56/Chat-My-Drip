@@ -93,14 +93,15 @@ const App: React.FC = () => {
 
     checkAuthAndLoadRecent();
 
-    // Listen for auth changes (e.g., after OAuth redirect)
+    // Listen for auth changes (e.g., after OAuth redirect or logout)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const authenticated = !!session;
       setIsAuthenticated(authenticated);
-      // If user just signed in, check for recent outfit
+      
       if (authenticated) {
+        // User signed in - check for recent outfit
         try {
           const outfits = await getSavedOutfits();
           if (outfits.length > 0) {
@@ -119,6 +120,13 @@ const App: React.FC = () => {
           // On error, default to upload screen
           setView(AppState.PREVIEW);
         }
+      } else {
+        // User signed out - clear state and go to landing
+        setImage(null);
+        setResult(null);
+        setChatSession(null);
+        setSavedOutfit(null);
+        setView(AppState.LANDING);
       }
     });
 

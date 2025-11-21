@@ -24,7 +24,17 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits, isAuthe
   }, [isAuthenticated]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        alert('Failed to sign out. Please try again.');
+      }
+      // Auth state change will be handled by App.tsx listener
+    } catch (error) {
+      console.error('Error signing out:', error);
+      alert('Failed to sign out. Please try again.');
+    }
   };
 
   const handleCheckMyDrip = async () => {
