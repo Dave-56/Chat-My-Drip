@@ -71,7 +71,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits, isAuthe
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin,
+            redirectTo: `${window.location.origin}${window.location.pathname.startsWith('/chatmydrip') ? '/chatmydrip' : ''}`,
           },
         });
 
