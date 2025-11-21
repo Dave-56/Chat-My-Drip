@@ -594,3 +594,50 @@ export const getOutfitsInCollection = async (collectionId: string): Promise<Save
   return allOutfits.filter(outfit => collection.outfitIds.includes(outfit.id));
 };
 
+/**
+ * Delete user account and all associated data
+ * Note: This deletes all user data and signs out the user.
+ * The auth user record in Supabase will remain but will have no associated data.
+ * To fully delete the auth user, use Supabase dashboard or a server-side function.
+ */
+export const deleteUserAccount = async (): Promise<void> => {
+  const userId = await getUserId();
+  if (!userId) {
+    throw new Error('User must be logged in to delete account');
+  }
+
+  try {
+    // Delete all collections first
+    const { error: collectionsError } = await supabase
+      .from('collections')
+      .delete()
+      .eq('user_id', userId);
+
+    if (collectionsError) {
+      console.error('Error deleting collections:', collectionsError);
+      throw collectionsError;
+    }
+
+    // Delete all outfits
+    const { error: outfitsError } = await supabase
+      .from('outfits')
+      .delete()
+      .eq('user_id', userId);
+
+    if (outfitsError) {
+      console.error('Error deleting outfits:', outfitsError);
+      throw outfitsError;
+    }
+
+    // Sign out the user (this effectively removes them from the app)
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      console.error('Error signing out:', signOutError);
+      // Don't throw - data is already deleted
+    }
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    throw error;
+  }
+};
+

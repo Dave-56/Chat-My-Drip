@@ -25,15 +25,41 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits, isAuthe
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error signing out:', error);
-        alert('Failed to sign out. Please try again.');
+      // Add timeout to prevent hanging
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('signOut timeout')), 3000)
+      );
+      
+      await Promise.race([signOutPromise, timeoutPromise]);
+      
+      // Manually clear session from localStorage (Supabase stores it there)
+      try {
+        const supabaseStorageKeys = Object.keys(localStorage).filter(key => 
+          key.startsWith('sb-') || key.includes('supabase')
+        );
+        supabaseStorageKeys.forEach(key => localStorage.removeItem(key));
+        sessionStorage.clear();
+      } catch (storageError) {
+        // Silently fail
       }
-      // Auth state change will be handled by App.tsx listener
+      
+      // Reload to ensure clean state
+      window.location.href = window.location.origin;
+      
     } catch (error) {
-      console.error('Error signing out:', error);
-      alert('Failed to sign out. Please try again.');
+      // On timeout or any error, manually clear storage and reload
+      try {
+        const supabaseStorageKeys = Object.keys(localStorage).filter(key => 
+          key.startsWith('sb-') || key.includes('supabase')
+        );
+        supabaseStorageKeys.forEach(key => localStorage.removeItem(key));
+        sessionStorage.clear();
+      } catch (storageError) {
+        // Silently fail
+      }
+      
+      window.location.href = window.location.origin;
     }
   };
 

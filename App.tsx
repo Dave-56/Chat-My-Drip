@@ -56,9 +56,10 @@ const App: React.FC = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = checking
 
-  // Check auth status on mount and load most recent outfit if available
+
+  // Check auth status on mount
   useEffect(() => {
-    const checkAuthAndLoadRecent = async () => {
+    const checkAuth = async () => {
       // Skip if there's a hash (shareable link will handle it)
       if (window.location.hash.startsWith('#/fit/')) {
         return;
@@ -68,56 +69,24 @@ const App: React.FC = () => {
       const authenticated = !!session;
       setIsAuthenticated(authenticated);
       
-      // If authenticated and on landing, check for recent outfit
+      // If authenticated and on landing, go directly to upload screen
       if (authenticated && view === AppState.LANDING) {
-        try {
-          const outfits = await getSavedOutfits();
-          if (outfits.length > 0) {
-            // Load the most recent outfit (first in array, sorted by saved_at desc)
-            const mostRecent = outfits[0];
-            setSavedOutfit(mostRecent);
-            setImage(mostRecent.image);
-            setResult(mostRecent.analysis);
-            setView(AppState.RESULT);
-          } else {
-            // No outfits, go to upload screen
-            setView(AppState.PREVIEW);
-          }
-        } catch (error) {
-          console.error('Error loading recent outfit:', error);
-          // On error, default to upload screen
-          setView(AppState.PREVIEW);
-        }
+        setView(AppState.PREVIEW);
       }
     };
 
-    checkAuthAndLoadRecent();
+    checkAuth();
 
     // Listen for auth changes (e.g., after OAuth redirect or logout)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       const authenticated = !!session;
       setIsAuthenticated(authenticated);
       
       if (authenticated) {
-        // User signed in - check for recent outfit
-        try {
-          const outfits = await getSavedOutfits();
-          if (outfits.length > 0) {
-            // Load the most recent outfit
-            const mostRecent = outfits[0];
-            setSavedOutfit(mostRecent);
-            setImage(mostRecent.image);
-            setResult(mostRecent.analysis);
-            setView(AppState.RESULT);
-          } else {
-            // No outfits, go to upload screen
-            setView(AppState.PREVIEW);
-          }
-        } catch (error) {
-          console.error('Error loading recent outfit:', error);
-          // On error, default to upload screen
+        // User signed in - go to upload screen if on landing
+        if (view === AppState.LANDING) {
           setView(AppState.PREVIEW);
         }
       } else {
@@ -135,25 +104,8 @@ const App: React.FC = () => {
 
   const handleAuthSuccess = async () => {
     setIsAuthenticated(true);
-    // After sign-in, check for recent outfit or go to upload screen
-    try {
-      const outfits = await getSavedOutfits();
-      if (outfits.length > 0) {
-        // Load the most recent outfit
-        const mostRecent = outfits[0];
-        setSavedOutfit(mostRecent);
-        setImage(mostRecent.image);
-        setResult(mostRecent.analysis);
-        setView(AppState.RESULT);
-      } else {
-        // No outfits, go to upload screen
-        setView(AppState.PREVIEW);
-      }
-    } catch (error) {
-      console.error('Error loading recent outfit:', error);
-      // On error, default to upload screen
-      setView(AppState.PREVIEW);
-    }
+    // After sign-in, go directly to upload screen
+    setView(AppState.PREVIEW);
   };
 
   const handleStart = () => {
@@ -174,31 +126,21 @@ const App: React.FC = () => {
 
     try {
       const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType);
+      
+      // Set result and view FIRST - don't wait for save
       setResult(analysis);
       setIsRetrying(false);
       setRetryCount(0);
-      
-      // Auto-save outfit when results are ready
-      let savedOutfitId: string | null = null;
-      try {
-        // Auto-generate name from analysis
-        const outfitName = analysis.score >= 8 
-          ? `Fire Fit - ${analysis.vibe}`
-          : `${analysis.vibe} Fit`;
-        const savedOutfit = await saveOutfit(selectedImage, analysis, outfitName);
-        savedOutfitId = savedOutfit.id;
-      } catch (saveError) {
-        // Log but don't block UI if save fails
-        console.warn('Failed to auto-save outfit:', saveError);
-      }
-      
       setView(AppState.RESULT);
-      // Store outfit ID for sharing (we'll pass it to Results)
-      if (savedOutfitId) {
-        // We'll get it from the most recent saved outfit in Results component
-      }
+      
+      // Auto-save outfit in background (don't block UI)
+      saveOutfit(selectedImage, analysis, analysis.score >= 8 
+        ? `Fire Fit - ${analysis.vibe}`
+        : `${analysis.vibe} Fit`)
+        .catch(() => {
+          // Silently fail - user can still see results
+        });
     } catch (err) {
-      console.error(err);
       setIsRetrying(false);
       
       let errorMessage = "Failed to analyze image. Make sure your API key is valid and the image is clear.";
@@ -348,11 +290,27 @@ const App: React.FC = () => {
               onGoHome={handleGoHome}
             />
           )}
+          
+          {/* Debug: Log when RESULT view should show but doesn't */}
+          {view === AppState.RESULT && (!image || !result) && (
+            console.error('[VIEW DEBUG] RESULT view requested but missing data:', {
+              view,
+              hasImage: !!image,
+              hasResult: !!result,
+              imageType: image ? typeof image : 'null',
+              resultType: result ? typeof result : 'null'
+            }) || null
+          )}
 
           {view === AppState.MY_FITS && (
             <MyFits 
               onBack={() => setView(AppState.LANDING)}
               onViewOutfit={handleViewSavedOutfit}
+              onAccountDeleted={() => {
+                // Account deletion will sign out the user
+                // The auth state change listener will handle redirecting to landing
+                setView(AppState.LANDING);
+              }}
             />
           )}
 
@@ -363,6 +321,7 @@ const App: React.FC = () => {
               data={result}
               onBack={() => setView(AppState.MY_FITS)}
               onChat={handleOpenChat}
+              onDelete={() => setView(AppState.MY_FITS)}
             />
           )}
 

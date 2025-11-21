@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Share2, AlertCircle, CheckCircle, ShoppingBag, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Share2, AlertCircle, CheckCircle, ShoppingBag, MessageCircle, Trash2 } from 'lucide-react';
 import { SavedOutfit, UploadedImage, AnalysisResult } from '../types';
-import { getShareableLink } from '../utils/supabaseStorage';
+import { getShareableLink, deleteOutfit } from '../utils/supabaseStorage';
 import { Toast } from './Toast';
 import { ShareMenu } from './ShareMenu';
 
@@ -11,11 +11,14 @@ interface SavedOutfitViewProps {
   data: AnalysisResult;
   onBack: () => void;
   onChat: () => void;
+  onDelete?: () => void;
 }
 
-export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image, data, onBack, onChat }) => {
+export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image, data, onBack, onChat, onDelete }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
@@ -42,6 +45,31 @@ export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image,
     const text = encodeURIComponent(`${shareText}\n\nCheck my fit:`);
     const url = encodeURIComponent(shareLink);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+  };
+
+  const handleDelete = async () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteOutfit(outfit.id);
+      setToast({ message: 'Outfit deleted successfully', type: 'success' });
+      setTimeout(() => {
+        if (onDelete) {
+          onDelete();
+        } else {
+          onBack();
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error deleting outfit:', error);
+      setToast({ message: 'Failed to delete outfit. Please try again.', type: 'error' });
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   return (
@@ -169,6 +197,33 @@ export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image,
             <Share2 size={24} />
             SHARE
           </button>
+
+          {/* Delete Button */}
+          <button 
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={`w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display transition-colors text-lg ${
+              showDeleteConfirm
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-drip-dark text-red-500 border border-red-500/50 hover:bg-red-500/10'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <Trash2 size={20} />
+            {isDeleting 
+              ? 'DELETING...' 
+              : showDeleteConfirm 
+                ? 'CONFIRM DELETE' 
+                : 'DELETE OUTFIT'
+            }
+          </button>
+          {showDeleteConfirm && !isDeleting && (
+            <button 
+              onClick={() => setShowDeleteConfirm(false)}
+              className="w-full bg-drip-gray text-white font-bold py-3 rounded-full font-display hover:bg-drip-gray/80 transition-colors text-sm"
+            >
+              CANCEL
+            </button>
+          )}
         </div>
 
         {/* Saved Date */}

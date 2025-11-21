@@ -33,6 +33,24 @@ Follow these steps to set up Supabase for ChatMyDrip:
    - **Client Secret (for OAuth)**
 5. Click **Save**
 
+### Important: Configure Site URL and Redirect URLs
+
+1. In Supabase dashboard, go to **Authentication** → **URL Configuration**
+2. Add these to **Site URL** (use your production URL):
+   ```
+   https://chatmydrip.vercel.app
+   ```
+3. Add these to **Redirect URLs** (comma-separated):
+   ```
+   http://localhost:5173,http://localhost:3000,https://chatmydrip.vercel.app
+   ```
+   - Add `http://localhost:5173` for Vite dev server (default port)
+   - Add `http://localhost:3000` if you use a different port
+   - Add your production URL
+4. Click **Save**
+
+**Note**: Without localhost in the redirect URLs, sign out may not work properly on localhost!
+
 ## Step 3: Create Database Tables
 
 1. In Supabase dashboard, go to **SQL Editor**
@@ -52,11 +70,24 @@ Follow these steps to set up Supabase for ChatMyDrip:
 
 1. Create/update `.env.local` file in your project root:
    ```env
+   # Supabase (required)
    VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
    VITE_SUPABASE_ANON_KEY=your_anon_key_here
+
+   # AI Provider (optional - defaults to Gemini)
+   # For Gemini:
+   API_KEY=your_gemini_api_key_here
+   # OR
+   GEMINI_API_KEY=your_gemini_api_key_here
+
+   # For ChatGPT/OpenAI:
+   AI_PROVIDER=openai
+   OPENAI_API_KEY=sk-your-openai-api-key-here
    ```
 
 2. **Important**: Add `.env.local` to `.gitignore` if not already there
+
+**Note**: See `AI_PROVIDER_SETUP.md` for detailed instructions on switching between AI providers.
 
 ## Step 6: Test the Setup
 
@@ -81,6 +112,14 @@ Follow these steps to set up Supabase for ChatMyDrip:
 - Make sure you ran the SQL schema file
 - Check that RLS policies are enabled (they should be from the schema)
 - Verify tables exist in **Table Editor** in Supabase dashboard
+
+### "Sign out not working on localhost"
+- **This is the most common issue!** Make sure you've added localhost to Supabase redirect URLs:
+  1. Go to **Authentication** → **URL Configuration** in Supabase dashboard
+  2. Add `http://localhost:5173` (or your dev server port) to **Redirect URLs**
+  3. Save and try signing out again
+- If it still doesn't work, check browser console for errors
+- The app will fall back to reloading the page if sign out fails
 
 ## Next Steps
 
