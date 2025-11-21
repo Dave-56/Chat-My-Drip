@@ -1,62 +1,29 @@
 import React, { useState } from 'react';
-import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, MessageCircle, Home } from 'lucide-react';
-import { AnalysisResult, UploadedImage } from '../types';
-import { getShareableLink, getSavedOutfits } from '../utils/outfitStorage';
+import { ArrowLeft, Share2, AlertCircle, CheckCircle, ShoppingBag, MessageCircle } from 'lucide-react';
+import { SavedOutfit, UploadedImage, AnalysisResult } from '../types';
+import { getShareableLink } from '../utils/outfitStorage';
 import { Toast } from './Toast';
 import { ShareMenu } from './ShareMenu';
 
-interface ResultsProps {
+interface SavedOutfitViewProps {
+  outfit: SavedOutfit;
   image: UploadedImage;
   data: AnalysisResult;
-  onReset: () => void;
+  onBack: () => void;
   onChat: () => void;
-  onGoHome?: () => void; // Optional function to go to landing page
 }
 
-// Helper to convert base64 data URL to File object
-const dataURLtoFile = (dataurl: string, filename: string): File => {
-  const arr = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-};
-
-export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
+export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image, data, onBack, onChat }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
 
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
 
+  const shareLink = getShareableLink(outfit.id);
   const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
-  
-  // Get shareable link from most recently saved outfit
-  const getShareableLinkForCurrent = (): string | null => {
-    const outfits = getSavedOutfits();
-    if (outfits.length > 0) {
-      // Find the most recent outfit that matches this analysis
-      const recentOutfit = outfits.find(o => 
-        o.analysis.score === data.score && 
-        o.analysis.vibe === data.vibe
-      ) || outfits[0]; // Fallback to most recent
-      return getShareableLink(recentOutfit.id);
-    }
-    return null;
-  };
-
-  const shareLink = getShareableLinkForCurrent();
 
   const handleCopyLink = async () => {
-    if (!shareLink) {
-      setToast({ message: 'Outfit not saved yet. Link will be available after saving.', type: 'error' });
-      return;
-    }
-
     try {
       await navigator.clipboard.writeText(shareLink);
       setToast({ message: 'Link copied to clipboard!', type: 'success' });
@@ -73,13 +40,8 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
   const handleTwitterShare = () => {
     setShowShareMenu(false);
     const text = encodeURIComponent(`${shareText}\n\nCheck my fit:`);
-    const url = encodeURIComponent(shareLink || 'https://chatmydrip.vercel.app');
+    const url = encodeURIComponent(shareLink);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
-  };
-
-  const handleShareImageCardClick = async () => {
-    setShowShareMenu(false);
-    await handleShareImageCard();
   };
 
   return (
@@ -92,6 +54,18 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
         />
       )}
       <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
+      {/* Header */}
+      <div className="shrink-0 h-[72px] bg-drip-dark border-b-2 border-white/50 flex items-center gap-3 px-4">
+        <button 
+          onClick={onBack} 
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-black border-2 border-black rounded-full active:bg-gray-200 transition-colors"
+        >
+          <ArrowLeft size={20} strokeWidth={2.5} />
+          <span className="font-display font-bold text-xs uppercase">Back</span>
+        </button>
+        <h2 className="font-display font-bold text-white text-lg">SAVED FIT</h2>
+      </div>
+
       {/* Header Image & Score Overlay */}
       <div className="relative w-full aspect-square shrink-0">
         <img 
@@ -134,13 +108,12 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
                 <MessageCircle size={20} />
              </div>
              <div className="text-left">
-                <p className="text-sm font-normal opacity-90">Have questions?</p>
+                <p className="text-sm font-normal opacity-90">Chat about this fit?</p>
                 <p className="text-lg leading-none">ASK DRIP</p>
              </div>
           </div>
           <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
         </button>
-
 
         {/* Hits */}
         <div className="bg-drip-dark p-5 rounded-xl border border-drip-gray">
@@ -196,29 +169,16 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
             <Share2 size={24} />
             SHARE
           </button>
-
-          {/* Secondary Row */}
-          <div className="flex gap-3">
-            <button 
-              onClick={onReset}
-              className="flex-1 bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors"
-            >
-              <RefreshCw size={20} />
-              NEXT FIT
-            </button>
-          </div>
-          
-          {/* Home Button */}
-          {onGoHome && (
-            <button 
-              onClick={onGoHome}
-              className="w-full bg-drip-dark text-white font-bold py-3 rounded-full flex items-center justify-center gap-2 font-display hover:bg-drip-gray transition-colors border border-drip-gray"
-            >
-              <Home size={18} />
-              BACK TO HOME
-            </button>
-          )}
         </div>
+
+        {/* Saved Date */}
+        <p className="text-center text-xs text-gray-500 mt-2">
+          Saved on {new Date(outfit.savedAt).toLocaleDateString('en-US', { 
+            month: 'long', 
+            day: 'numeric', 
+            year: 'numeric' 
+          })}
+        </p>
       </div>
     </div>
 
@@ -233,3 +193,4 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
     </>
   );
 };
+

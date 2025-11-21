@@ -1,11 +1,13 @@
 import React from 'react';
-import { Camera, Sparkles } from 'lucide-react';
+import { Camera, Sparkles, FolderOpen } from 'lucide-react';
+import { getSavedOutfits } from '../utils/outfitStorage';
 
 interface LandingProps {
   onStart: () => void;
+  onViewMyFits: () => void;
 }
 
-export const Landing: React.FC<LandingProps> = ({ onStart }) => {
+export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits }) => {
   return (
     <div className="flex flex-col h-full w-full animate-slide-up overflow-y-auto">
       <div className="flex-1 p-6 flex flex-col justify-between">
@@ -13,12 +15,12 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
           <div className="inline-block bg-drip-lime text-black font-bold px-3 py-1 uppercase text-sm tracking-widest transform -rotate-2 mb-4">
             AI Stylist
           </div>
-          <h1 className="text-6xl font-display font-bold leading-[0.9] mb-4 text-white">
+          <h1 className="text-5xl md:text-6xl font-display font-bold leading-[0.9] mb-4 text-white">
             CHAT<br />
             <span className="text-drip-accent">MY</span><br />
             DRIP
           </h1>
-          <p className="text-gray-400 text-lg max-w-xs">
+          <p className="text-gray-400 text-base md:text-lg max-w-xs">
             Upload your fit. Get roasted, rated, and styled by AI. No login. No cap.
           </p>
         </div>
@@ -45,12 +47,24 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
           </div>
         </div>
 
-        <button
-          onClick={onStart}
-          className="w-full bg-white text-black font-bold font-display text-xl py-5 rounded-full active:scale-95 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)]"
-        >
-          CHECK MY DRIP
-        </button>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onStart}
+            className="w-full bg-white text-black font-bold font-display text-lg md:text-xl py-4 md:py-5 rounded-full active:scale-95 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)]"
+          >
+            CHECK MY DRIP
+          </button>
+          
+          {getSavedOutfits().length > 0 && (
+            <button
+              onClick={onViewMyFits}
+              className="w-full bg-drip-dark text-white font-bold font-display text-base py-3 rounded-full border border-drip-gray/50 active:scale-95 transition-transform flex items-center justify-center gap-2"
+            >
+              <FolderOpen size={20} />
+              MY FITS ({getSavedOutfits().length})
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

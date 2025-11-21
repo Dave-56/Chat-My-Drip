@@ -14,6 +14,8 @@ export enum AppState {
   RESULT = 'RESULT',
   CHAT = 'CHAT',
   ERROR = 'ERROR',
+  MY_FITS = 'MY_FITS',
+  SAVED_OUTFIT = 'SAVED_OUTFIT',
 }
 
 export interface UploadedImage {
@@ -26,4 +28,21 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   text: string;
+}
+
+export interface SavedOutfit {
+  id: string;
+  image: UploadedImage;
+  analysis: AnalysisResult;
+  savedAt: number; // timestamp
+  name?: string; // optional name/tag
+  collectionIds?: string[]; // IDs of collections this outfit belongs to
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  color?: string; // Optional color for the collection
+  createdAt: number; // timestamp
+  outfitIds: string[]; // IDs of outfits in this collection
 }
