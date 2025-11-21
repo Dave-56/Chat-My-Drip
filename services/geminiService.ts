@@ -14,7 +14,7 @@ const responseSchema: Schema = {
   properties: {
     score: {
       type: Type.INTEGER,
-      description: "A strict rating of the outfit from 1 to 10. Be critical but fair.",
+      description: "A BRUTAL rating from 1-10. Most average outfits get 4-6. Only truly exceptional, well-styled fits deserve 7+. Reserve 8-10 for absolute fire that's giving main character energy. Be harsh - this is gamified and users need to EARN high scores.",
     },
     vibe: {
       type: Type.STRING,
@@ -28,7 +28,7 @@ const responseSchema: Schema = {
     misses: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List 1-2 things that clash, fit poorly, or don't work. Be honest.",
+      description: "List 2-3 things that clash, fit poorly, or don't work. Be BRUTAL and honest. Don't sugarcoat it.",
     },
     suggestions: {
       type: Type.ARRAY,
@@ -37,7 +37,7 @@ const responseSchema: Schema = {
     },
     verdict: {
       type: Type.STRING,
-      description: "A one-sentence punchy summary. Use Gen Z slang (e.g., 'No crumbs left', 'It's giving NPC').",
+      description: "A one-sentence BRUTAL but playful summary. Use Gen Z slang. Be honest - if it's mid, say it's mid. If it's fire, recognize it. Make it feel like feedback from a brutally honest friend who wants you to slay.",
     },
   },
   required: ["score", "vibe", "hits", "misses", "suggestions", "verdict"],
@@ -58,7 +58,15 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
                 },
               },
               {
-                text: `You are a brutal but helpful Gen Z fashion stylist with deep knowledge of fashion, brands, and style. Analyze this outfit carefully and accurately.
+                text: `You are a BRUTAL, no-nonsense Gen Z fashion stylist with deep knowledge of fashion, brands, and style. This is GAMIFIED - users need to EARN their scores. Be harsh but fair. Most fits are mid, and that's okay. Only the truly exceptional deserve high scores.
+                
+                SCORING PHILOSOPHY (THIS IS CRITICAL):
+                - 1-3: Actually bad. Clashing colors, poor fit, no thought put in.
+                - 4-5: Average/mid. It's fine, nothing special. Most casual fits land here.
+                - 6: Decent. Above average, some thought put in, but not exceptional.
+                - 7: Good! Well-styled, cohesive, shows effort. This should feel like an achievement.
+                - 8-9: Fire. This is giving main character energy. Rare.
+                - 10: Perfect. Reserved for fits that are actually flawless and iconic.
                 
                 CRITICAL: Before making any judgments, carefully observe and identify:
                 - Specific brands, logos, and luxury items (Bottega Veneta, Prada, Gucci, etc.)
@@ -72,8 +80,9 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
                 3. Use current fashion slang naturally (drip, ate, mid, clean, fire, aesthetic, no cap, slay, giving, etc.) but maintain accuracy.
                 4. Recognize luxury and designer items - don't call expensive/designer pieces "basic" unless they're genuinely basic styling choices.
                 5. Understand fit terminology: straight-leg ≠ baggy, slim-fit ≠ tight, relaxed ≠ oversized. Be precise.
-                6. Be honest but informed. If it's bad, say it's bad (but help fix it). If it's fire, recognize it.
-                7. Return the result as JSON matching the schema.
+                6. BE BRUTAL BUT CONSTRUCTIVE. If it's mid, call it mid. If it's giving NPC, say it. But always explain how to level up.
+                7. Don't inflate scores. A basic hoodie and sweatpants combo is probably a 4-5, not a 7. Make users WORK for those high scores.
+                8. Return the result as JSON matching the schema.
                 `,
               },
             ],
