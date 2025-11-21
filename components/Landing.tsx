@@ -148,7 +148,11 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits, isAuthe
           <button
             onClick={handleCheckMyDrip}
             disabled={signingIn}
-            className="w-full bg-white text-black font-bold font-display text-lg md:text-xl py-4 md:py-5 rounded-full active:scale-95 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            className={`w-full font-bold font-display text-lg md:text-xl py-4 md:py-5 rounded-full active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 ${
+              isAuthenticated
+                ? 'bg-drip-accent text-white shadow-[0_0_20px_rgba(203,108,230,0.4)] hover:shadow-[0_0_30px_rgba(203,108,230,0.6)]'
+                : 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)]'
+            }`}
           >
             {signingIn ? (
               <>
