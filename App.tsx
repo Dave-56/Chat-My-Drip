@@ -6,19 +6,49 @@ import { Results } from './components/Results';
 import { ChatInterface } from './components/ChatInterface';
 import { MyFits } from './components/MyFits';
 import { SavedOutfitView } from './components/SavedOutfitView';
-import { analyzeFit, createStylistChat } from './services/geminiService';
-import { AppState, UploadedImage, AnalysisResult, SavedOutfit } from './types';
+import { analyzeFit as analyzeFitGemini, createStylistChat as createStylistChatGemini } from './services/geminiService';
+import { analyzeFit as analyzeFitOpenAI, createStylistChat as createStylistChatOpenAI } from './services/openaiService';
+import { AppState, UploadedImage, AnalysisResult, SavedOutfit, ChatSession } from './types';
 import { getSavedOutfit, saveOutfit } from './utils/outfitStorage';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Chat } from "@google/genai";
 import { isNetworkError, RetryableError } from './utils/errorRecovery';
+
+// Service selector with priority:
+// 1. If AI_PROVIDER is explicitly set, use that
+// 2. If only one API key is available, use that service
+// 3. If both are available and no preference, default to Gemini (original)
+const hasGeminiKey = process.env.API_KEY && 
+                     process.env.API_KEY !== 'undefined' && 
+                     !process.env.API_KEY.includes('your_api_key');
+const hasOpenAIKey = process.env.OPENAI_API_KEY && 
+                     process.env.OPENAI_API_KEY !== 'undefined' && 
+                     !process.env.OPENAI_API_KEY.includes('your_api_key');
+const explicitProvider = process.env.AI_PROVIDER?.toLowerCase();
+
+let useOpenAI: boolean;
+if (explicitProvider === 'openai' || explicitProvider === 'chatgpt') {
+  useOpenAI = true;
+} else if (explicitProvider === 'gemini') {
+  useOpenAI = false;
+} else if (hasOpenAIKey && !hasGeminiKey) {
+  useOpenAI = true; // Only OpenAI key available
+} else if (hasGeminiKey && !hasOpenAIKey) {
+  useOpenAI = false; // Only Gemini key available
+} else if (hasOpenAIKey && hasGeminiKey) {
+  useOpenAI = false; // Both available, default to Gemini (original)
+} else {
+  useOpenAI = false; // No keys, default to Gemini (will error but consistent)
+}
+
+const analyzeFit = useOpenAI ? analyzeFitOpenAI : analyzeFitGemini;
+const createStylistChat = useOpenAI ? createStylistChatOpenAI : createStylistChatGemini;
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppState>(AppState.LANDING);
   const [image, setImage] = useState<UploadedImage | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [savedOutfit, setSavedOutfit] = useState<SavedOutfit | null>(null);
   const [previousView, setPreviousView] = useState<AppState | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);

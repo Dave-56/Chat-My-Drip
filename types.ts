@@ -48,3 +48,8 @@ export interface Collection {
   createdAt: number; // timestamp
   outfitIds: string[]; // IDs of outfits in this collection
 }
+
+// Common interface for chat sessions (works with both Gemini and OpenAI)
+export interface ChatSession {
+  sendMessage(options: { message: string }): Promise<{ text: string }>;
+}

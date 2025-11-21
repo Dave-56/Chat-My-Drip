@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { Send, ArrowLeft, Sparkles } from 'lucide-react';
-import { ChatMessage, UploadedImage } from '../types';
-import { Chat } from "@google/genai";
+import { ChatMessage, UploadedImage, ChatSession } from '../types';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { ChatMessageSkeleton } from './LoadingSkeleton';
 
 interface ChatInterfaceProps {
-  chatSession: Chat;
+  chatSession: ChatSession;
   image: UploadedImage;
   onBack: () => void;
 }

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
-import { AnalysisResult } from "../types";
+import { AnalysisResult, ChatSession } from "../types";
 import { withRetry, RetryableError, isNetworkError } from "../utils/errorRecovery";
 
 // Debug: Check if API key is loaded
@@ -104,8 +104,8 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
   );
 };
 
-export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): Chat => {
-  return genAI.chats.create({
+export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): ChatSession => {
+  const geminiChat = genAI.chats.create({
     model: "gemini-2.0-flash-exp",
     history: [
       {
@@ -144,4 +144,12 @@ export const createStylistChat = (base64Image: string, mimeType: string, previou
       `,
     },
   });
+
+  // Wrap Gemini Chat to match ChatSession interface
+  return {
+    sendMessage: async (options: { message: string }) => {
+      const response = await geminiChat.sendMessage({ message: options.message });
+      return { text: response.text || "" };
+    }
+  };
 };
