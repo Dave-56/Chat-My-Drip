@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     const aiProvider = env.AI_PROVIDER || process.env.AI_PROVIDER || ''; // 'openai' or 'gemini'
     
     return {
+      base: '/chatmydrip/',
       server: {
         port: 3000,
         host: '0.0.0.0',
