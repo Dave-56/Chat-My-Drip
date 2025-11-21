@@ -114,7 +114,7 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat }
              </div>
              <div className="text-left">
                 <p className="text-sm font-normal opacity-90">Have questions?</p>
-                <p className="text-lg leading-none">ASK THE STYLIST</p>
+                <p className="text-lg leading-none">ASK DRIP</p>
              </div>
           </div>
           <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>

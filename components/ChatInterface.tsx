@@ -82,7 +82,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
         </button>
         <div className="flex items-center gap-3 flex-1 justify-end">
           <div className="text-right">
-            <h3 className="font-display font-bold text-white text-lg leading-none">STYLIST DM</h3>
+            <h3 className="font-display font-bold text-white text-lg leading-none">DRIP DM</h3>
             <p className="text-[10px] text-drip-lime uppercase tracking-wider flex items-center gap-1 justify-end mt-0.5">
               <span className="w-1.5 h-1.5 bg-drip-lime rounded-full animate-pulse"></span>
               Live
