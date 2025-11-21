@@ -11,6 +11,14 @@ export default defineConfig(({ mode }) => {
     
     return {
       base: '/chatmydrip/',
+      build: {
+        outDir: 'dist',
+        rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html'),
+          },
+        },
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',

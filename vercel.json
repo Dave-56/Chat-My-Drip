@@ -1,10 +1,8 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build && mkdir -p dist/chatmydrip && mv dist/index.html dist/chatmydrip/index.html || true",
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install",
-  "cleanUrls": false,
-  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/chatmydrip/assets/:path*",
@@ -12,26 +10,11 @@
     },
     {
       "source": "/chatmydrip/:path*",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/",
-      "destination": "https://easy-popup-049555.framer.app/"
+      "destination": "/chatmydrip/index.html"
     },
     {
       "source": "/(.*)",
       "destination": "https://easy-popup-049555.framer.app/$1"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/",
-      "headers": [
-        {
-          "key": "x-rewrite-target",
-          "value": "https://easy-popup-049555.framer.app/"
-        }
-      ]
     }
   ]
 }
