@@ -43,10 +43,96 @@ const compressImage = (dataUrl: string): Promise<string> => {
 };
 
 /**
- * Save an outfit to LocalStorage with image compression
+ * Auto-assign outfit to collections based on vibe and score
+ */
+const autoAssignToCollections = (outfitId: string, analysis: AnalysisResult): void => {
+  const collections = getCollections();
+  const collectionsToAdd: string[] = [];
+
+  // Auto-assign based on score (Fire Fits for 8+)
+  if (analysis.score >= 8) {
+    const fireCollection = collections.find(c => c.id === 'default_fire' || c.name.toLowerCase().includes('fire'));
+    if (fireCollection) {
+      collectionsToAdd.push(fireCollection.id);
+    }
+  }
+
+  // Auto-assign based on vibe keywords
+  const vibeLower = analysis.vibe.toLowerCase();
+  
+  // Work-related vibes
+  if (vibeLower.includes('work') || vibeLower.includes('business') || vibeLower.includes('office') || 
+      vibeLower.includes('professional') || vibeLower.includes('corporate')) {
+    const workCollection = collections.find(c => c.id === 'default_work' || c.name.toLowerCase().includes('work'));
+    if (workCollection) {
+      collectionsToAdd.push(workCollection.id);
+    }
+  }
+  
+  // Casual vibes
+  if (vibeLower.includes('casual') || vibeLower.includes('everyday') || vibeLower.includes('street') ||
+      vibeLower.includes('comfy') || vibeLower.includes('chill')) {
+    const casualCollection = collections.find(c => c.id === 'default_casual' || c.name.toLowerCase().includes('casual'));
+    if (casualCollection) {
+      collectionsToAdd.push(casualCollection.id);
+    }
+  }
+  
+  // Date night vibes
+  if (vibeLower.includes('date') || vibeLower.includes('romantic') || vibeLower.includes('dinner') ||
+      vibeLower.includes('evening') || vibeLower.includes('night')) {
+    const dateCollection = collections.find(c => c.id === 'default_date' || c.name.toLowerCase().includes('date'));
+    if (dateCollection) {
+      collectionsToAdd.push(dateCollection.id);
+    }
+  }
+  
+  // Going out vibes
+  if (vibeLower.includes('going out') || vibeLower.includes('party') || vibeLower.includes('club') ||
+      vibeLower.includes('night out') || vibeLower.includes('out')) {
+    const goingOutCollection = collections.find(c => c.id === 'default_going_out' || c.name.toLowerCase().includes('going'));
+    if (goingOutCollection) {
+      collectionsToAdd.push(goingOutCollection.id);
+    }
+  }
+  
+  // Formal vibes
+  if (vibeLower.includes('formal') || vibeLower.includes('elegant') || vibeLower.includes('luxury') ||
+      vibeLower.includes('sophisticated') || vibeLower.includes('dress')) {
+    const formalCollection = collections.find(c => c.id === 'default_formal' || c.name.toLowerCase().includes('formal'));
+    if (formalCollection) {
+      collectionsToAdd.push(formalCollection.id);
+    }
+  }
+
+  // If vibe doesn't match any collection, create a new one based on vibe name
+  const existingVibeCollection = collections.find(c => 
+    c.name.toLowerCase() === analysis.vibe.toLowerCase() ||
+    c.name.toLowerCase().includes(analysis.vibe.toLowerCase())
+  );
+
+  if (!existingVibeCollection && analysis.vibe) {
+    // Create a new collection for this vibe
+    const newCollection = createCollection(analysis.vibe, '#CB6CE6');
+    collectionsToAdd.push(newCollection.id);
+  } else if (existingVibeCollection) {
+    collectionsToAdd.push(existingVibeCollection.id);
+  }
+
+  // Add outfit to all matched collections
+  collectionsToAdd.forEach(collectionId => {
+    addOutfitToCollection(outfitId, collectionId);
+  });
+};
+
+/**
+ * Save an outfit to LocalStorage with image compression and auto-assign to collections
  */
 export const saveOutfit = async (image: UploadedImage, analysis: AnalysisResult, name?: string): Promise<SavedOutfit> => {
   try {
+    // Ensure default collections exist
+    getCollections();
+
     // Compress the image before saving
     const compressedPreviewUrl = await compressImage(image.previewUrl);
 
@@ -76,6 +162,10 @@ export const saveOutfit = async (image: UploadedImage, analysis: AnalysisResult,
     // Try to save, handle quota errors
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      
+      // Auto-assign to collections based on vibe and score
+      autoAssignToCollections(outfit.id, analysis);
+      
     } catch (error: any) {
       if (error.name === 'QuotaExceededError' || error.code === 22) {
         // Storage full - remove more old items and try again
@@ -84,6 +174,12 @@ export const saveOutfit = async (image: UploadedImage, analysis: AnalysisResult,
         }
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+          // Try auto-assignment even if storage is tight
+          try {
+            autoAssignToCollections(outfit.id, analysis);
+          } catch (e) {
+            // Ignore collection assignment errors if storage is full
+          }
         } catch (e) {
           // Still failing - clear and save just this one
           localStorage.removeItem(STORAGE_KEY);
@@ -171,16 +267,39 @@ export const getShareableLink = (outfitId: string): string => {
 // ========== COLLECTIONS ==========
 
 /**
- * Get all collections from LocalStorage
+ * Initialize default collections
+ */
+const initializeDefaultCollections = (): Collection[] => {
+  const defaultCollections: Collection[] = [
+    { id: 'default_work', name: 'Work', color: '#4A90E2', createdAt: Date.now(), outfitIds: [] },
+    { id: 'default_casual', name: 'Casual', color: '#50C878', createdAt: Date.now(), outfitIds: [] },
+    { id: 'default_date', name: 'Date Night', color: '#CB6CE6', createdAt: Date.now(), outfitIds: [] },
+    { id: 'default_going_out', name: 'Going Out', color: '#FF6B6B', createdAt: Date.now(), outfitIds: [] },
+    { id: 'default_formal', name: 'Formal', color: '#FFD700', createdAt: Date.now(), outfitIds: [] },
+    { id: 'default_fire', name: 'Fire Fits 🔥', color: '#FF4500', createdAt: Date.now(), outfitIds: [] }, // For 8+ scores
+  ];
+  saveCollections(defaultCollections);
+  return defaultCollections;
+};
+
+/**
+ * Get all collections from LocalStorage, initialize defaults if empty
  */
 export const getCollections = (): Collection[] => {
   try {
     const stored = localStorage.getItem(COLLECTIONS_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored) as Collection[];
+    if (!stored) {
+      return initializeDefaultCollections();
+    }
+    const collections = JSON.parse(stored) as Collection[];
+    // If collections exist but no defaults, ensure defaults exist
+    if (collections.length === 0) {
+      return initializeDefaultCollections();
+    }
+    return collections;
   } catch (error) {
     console.error('Error loading collections:', error);
-    return [];
+    return initializeDefaultCollections();
   }
 };
 
