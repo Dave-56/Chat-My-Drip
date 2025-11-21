@@ -3,6 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install",
+  "cleanUrls": false,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/chatmydrip/assets/:path*",
@@ -13,8 +15,23 @@
       "destination": "/index.html"
     },
     {
+      "source": "/",
+      "destination": "https://easy-popup-049555.framer.app/"
+    },
+    {
       "source": "/(.*)",
       "destination": "https://easy-popup-049555.framer.app/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "x-rewrite-target",
+          "value": "https://easy-popup-049555.framer.app/"
+        }
+      ]
     }
   ]
 }
