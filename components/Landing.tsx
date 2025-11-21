@@ -44,8 +44,9 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits, isAuthe
         // Silently fail
       }
       
-      // Reload to ensure clean state
-      window.location.href = window.location.origin;
+      // Reload to ensure clean state - stay at /chatmydrip path
+      const basePath = window.location.pathname.startsWith('/chatmydrip') ? '/chatmydrip' : '';
+      window.location.href = `${window.location.origin}${basePath}`;
       
     } catch (error) {
       // On timeout or any error, manually clear storage and reload
@@ -59,7 +60,9 @@ export const Landing: React.FC<LandingProps> = ({ onStart, onViewMyFits, isAuthe
         // Silently fail
       }
       
-      window.location.href = window.location.origin;
+      // Stay at /chatmydrip path on logout
+      const basePath = window.location.pathname.startsWith('/chatmydrip') ? '/chatmydrip' : '';
+      window.location.href = `${window.location.origin}${basePath}`;
     }
   };
 
