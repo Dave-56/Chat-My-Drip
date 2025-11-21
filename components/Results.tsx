@@ -1,6 +1,9 @@
-import React from 'react';
-import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle, Home } from 'lucide-react';
+import React, { useState } from 'react';
+import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, MessageCircle, Home } from 'lucide-react';
 import { AnalysisResult, UploadedImage } from '../types';
+import { getShareableLink, getSavedOutfits } from '../utils/outfitStorage';
+import { Toast } from './Toast';
+import { ShareMenu } from './ShareMenu';
 
 interface ResultsProps {
   image: UploadedImage;
@@ -24,62 +27,71 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 };
 
 export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
 
   const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
-  // Use production URL for sharing
-  const getProductionUrl = () => {
-    const prodUrl = 'https://chatmydrip.vercel.app';
-    if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('chatmydrip')) {
-      return window.location.origin;
+  
+  // Get shareable link from most recently saved outfit
+  const getShareableLinkForCurrent = (): string | null => {
+    const outfits = getSavedOutfits();
+    if (outfits.length > 0) {
+      // Find the most recent outfit that matches this analysis
+      const recentOutfit = outfits.find(o => 
+        o.analysis.score === data.score && 
+        o.analysis.vibe === data.vibe
+      ) || outfits[0]; // Fallback to most recent
+      return getShareableLink(recentOutfit.id);
     }
-    return prodUrl;
+    return null;
   };
-  const shareUrl = getProductionUrl();
 
-  const handleNativeShare = async () => {
-    // Try sharing image + text
-    const file = dataURLtoFile(image.previewUrl, 'chatmydrip-result.png');
-    
-    // Check if the browser supports sharing files
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: 'ChatMyDrip Result',
-          text: shareText,
-        });
-        return;
-      } catch (error) {
-        console.log('Error sharing file', error);
-      }
+  const shareLink = getShareableLinkForCurrent();
+
+  const handleCopyLink = async () => {
+    if (!shareLink) {
+      setToast({ message: 'Outfit not saved yet. Link will be available after saving.', type: 'error' });
+      return;
     }
-    
-    // Fallback to text share if file share fails or isn't supported
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'ChatMyDrip Result',
-          text: shareText,
-          url: shareUrl,
-        });
-      } catch (error) {
-        console.log('Error sharing text', error);
-      }
-    } else {
-      alert("Screenshot this to share!");
+
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setToast({ message: 'Link copied to clipboard!', type: 'success' });
+    } catch (error) {
+      setToast({ message: 'Failed to copy link', type: 'error' });
     }
+  };
+
+  const handleShare = async () => {
+    setShowShareMenu(false);
+    await handleCopyLink();
   };
 
   const handleTwitterShare = () => {
+    setShowShareMenu(false);
     const text = encodeURIComponent(`${shareText}\n\nCheck my fit:`);
-    const url = encodeURIComponent(shareUrl);
+    const url = encodeURIComponent(shareLink || 'https://chatmydrip.vercel.app');
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   };
 
+  const handleShareImageCardClick = async () => {
+    setShowShareMenu(false);
+    await handleShareImageCard();
+  };
+
   return (
-    <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
       {/* Header Image & Score Overlay */}
       <div className="relative w-full aspect-square shrink-0">
         <img 
@@ -176,24 +188,17 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
 
         {/* Actions */}
         <div className="pt-4 space-y-3">
-          {/* Primary Share Button (Native - Instagram/Generic) */}
+          {/* Primary Share Button */}
           <button 
-            onClick={handleNativeShare}
+            onClick={() => setShowShareMenu(true)}
             className="w-full bg-white text-black font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-200 transition-colors text-lg shadow-lg shadow-white/10"
           >
             <Share2 size={24} />
-            SHARE RESULT
+            SHARE
           </button>
 
           {/* Secondary Row */}
           <div className="flex gap-3">
-            <button 
-              onClick={handleTwitterShare}
-              className="flex-1 bg-[#1DA1F2] text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity"
-            >
-              <Twitter size={20} fill="currentColor" />
-              TWEET
-            </button>
             <button 
               onClick={onReset}
               className="flex-1 bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors"
@@ -213,11 +218,18 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
               BACK TO HOME
             </button>
           )}
-          <p className="text-center text-xs text-gray-500 mt-2">
-            Pro tip: Use "Share Result" for Instagram Stories
-          </p>
         </div>
       </div>
     </div>
+
+    {/* Share Menu */}
+    <ShareMenu
+      isOpen={showShareMenu}
+      onClose={() => setShowShareMenu(false)}
+      onShare={handleShare}
+      onTweet={handleTwitterShare}
+      shareLink={shareLink}
+    />
+    </>
   );
 };

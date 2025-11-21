@@ -36,14 +36,20 @@ const App: React.FC = () => {
       setResult(analysis);
       
       // Auto-save outfit when results are ready
+      let savedOutfitId: string | null = null;
       try {
-        await saveOutfit(selectedImage, analysis);
+        const savedOutfit = await saveOutfit(selectedImage, analysis);
+        savedOutfitId = savedOutfit.id;
       } catch (saveError) {
         // Log but don't block UI if save fails
         console.warn('Failed to auto-save outfit:', saveError);
       }
       
       setView(AppState.RESULT);
+      // Store outfit ID for sharing (we'll pass it to Results)
+      if (savedOutfitId) {
+        // We'll get it from the most recent saved outfit in Results component
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to analyze image. Make sure your API key is valid and the image is clear.");

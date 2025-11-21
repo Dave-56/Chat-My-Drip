@@ -70,68 +70,6 @@ export const StatsDashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* Vibe Distribution */}
-      {Object.keys(stats.vibeCount).length > 0 && (
-        <div className="bg-drip-dark rounded-xl border border-drip-gray p-4">
-          <h3 className="font-display font-bold text-white text-lg mb-4">VIBE BREAKDOWN</h3>
-          <div className="space-y-3">
-            {Object.entries(stats.vibeCount)
-              .sort(([, a], [, b]) => b - a)
-              .slice(0, 5)
-              .map(([vibe, count]) => {
-                const percentage = (count / stats.totalOutfits) * 100;
-                return (
-                  <div key={vibe} className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-white font-bold text-sm uppercase">{vibe}</span>
-                      <span className="text-gray-400 text-sm">{count} outfit{count !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="h-2 bg-drip-gray rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-drip-accent rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {/* Score Distribution */}
-      {Object.keys(stats.scoreDistribution).length > 0 && (
-        <div className="bg-drip-dark rounded-xl border border-drip-gray p-4">
-          <h3 className="font-display font-bold text-white text-lg mb-4">SCORE DISTRIBUTION</h3>
-          <div className="grid grid-cols-5 gap-2">
-            {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].slice(0, 5).map((score) => {
-              const count = stats.scoreDistribution[score] || 0;
-              const maxCount = Math.max(...Object.values(stats.scoreDistribution));
-              const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
-              
-              return (
-                <div key={score} className="flex flex-col items-center justify-end h-24">
-                  <div className="w-full bg-drip-gray rounded-t-lg overflow-hidden h-full flex flex-col justify-end">
-                    <div 
-                      className={`w-full rounded-t-lg transition-all ${
-                        score >= 8 ? 'bg-drip-lime' : 
-                        score >= 6 ? 'bg-drip-accent' : 
-                        'bg-red-500'
-                      }`}
-                      style={{ height: `${height}%` }}
-                    />
-                  </div>
-                  <div className="mt-1">
-                    <p className="text-white font-display font-bold text-sm">{score}</p>
-                    <p className="text-gray-400 text-xs">{count}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Common Hits */}
       {stats.commonHits.length > 0 && (
         <div className="bg-drip-dark rounded-xl border border-drip-gray p-4">
@@ -163,35 +101,6 @@ export const StatsDashboard: React.FC = () => {
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* Recent Scores Timeline */}
-      {stats.recentScores.length > 0 && (
-        <div className="bg-drip-dark rounded-xl border border-drip-gray p-4">
-          <h3 className="font-display font-bold text-white text-lg mb-4">RECENT SCORES</h3>
-          <div className="flex gap-2 items-end justify-center h-32">
-            {stats.recentScores.map((score, i) => {
-              const maxScore = Math.max(...stats.recentScores);
-              const height = maxScore > 0 ? (score / maxScore) * 100 : 0;
-              
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
-                  <div className="w-full bg-drip-gray rounded-t-lg overflow-hidden h-full flex flex-col justify-end">
-                    <div 
-                      className={`w-full rounded-t-lg transition-all ${
-                        score >= 8 ? 'bg-drip-lime' : 
-                        score >= 6 ? 'bg-drip-accent' : 
-                        'bg-red-500'
-                      }`}
-                      style={{ height: `${height}%` }}
-                    />
-                  </div>
-                  <p className="text-white font-display font-bold text-xs mt-1">{score}</p>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 

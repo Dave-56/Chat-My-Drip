@@ -1,7 +1,9 @@
-import React from 'react';
-import { ArrowLeft, Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Share2, AlertCircle, CheckCircle, ShoppingBag, MessageCircle } from 'lucide-react';
 import { SavedOutfit, UploadedImage, AnalysisResult } from '../types';
 import { getShareableLink } from '../utils/outfitStorage';
+import { Toast } from './Toast';
+import { ShareMenu } from './ShareMenu';
 
 interface SavedOutfitViewProps {
   outfit: SavedOutfit;
@@ -11,72 +13,47 @@ interface SavedOutfitViewProps {
   onChat: () => void;
 }
 
-// Helper to convert base64 data URL to File object
-const dataURLtoFile = (dataurl: string, filename: string): File => {
-  const arr = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-};
-
 export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image, data, onBack, onChat }) => {
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
 
   const shareLink = getShareableLink(outfit.id);
   const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
 
-  const handleNativeShare = async () => {
-    const file = dataURLtoFile(image.previewUrl, 'chatmydrip-result.png');
-    
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: 'ChatMyDrip Result',
-          text: `${shareText}\n\nView: ${shareLink}`,
-        });
-        return;
-      } catch (error) {
-        console.log('Error sharing file', error);
-      }
-    }
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'ChatMyDrip Result',
-          text: `${shareText}\n\nView: ${shareLink}`,
-          url: shareLink,
-        });
-      } catch (error) {
-        console.log('Error sharing text', error);
-      }
-    } else {
-      // Fallback: copy link to clipboard
-      navigator.clipboard.writeText(shareLink);
-      alert('Link copied to clipboard!');
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setToast({ message: 'Link copied to clipboard!', type: 'success' });
+    } catch (error) {
+      setToast({ message: 'Failed to copy link', type: 'error' });
     }
   };
 
+  const handleShare = async () => {
+    setShowShareMenu(false);
+    await handleCopyLink();
+  };
+
   const handleTwitterShare = () => {
+    setShowShareMenu(false);
     const text = encodeURIComponent(`${shareText}\n\nCheck my fit:`);
     const url = encodeURIComponent(shareLink);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink);
-    alert('Link copied to clipboard!');
-  };
-
   return (
-    <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
       {/* Header */}
       <div className="shrink-0 h-[72px] bg-drip-dark border-b-2 border-white/50 flex items-center gap-3 px-4">
         <button 
@@ -184,31 +161,13 @@ export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image,
 
         {/* Actions */}
         <div className="pt-4 space-y-3">
-          {/* Share Link Button */}
+          {/* Primary Share Button */}
           <button 
-            onClick={handleCopyLink}
-            className="w-full bg-drip-accent text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20"
-          >
-            <Share2 size={24} />
-            COPY SHARE LINK
-          </button>
-
-          {/* Share Buttons */}
-          <button 
-            onClick={handleNativeShare}
+            onClick={() => setShowShareMenu(true)}
             className="w-full bg-white text-black font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-200 transition-colors text-lg shadow-lg shadow-white/10"
           >
             <Share2 size={24} />
-            SHARE RESULT
-          </button>
-
-          {/* Twitter Share */}
-          <button 
-            onClick={handleTwitterShare}
-            className="w-full bg-[#1DA1F2] text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity"
-          >
-            <Twitter size={20} fill="currentColor" />
-            TWEET
+            SHARE
           </button>
         </div>
 
@@ -222,6 +181,16 @@ export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image,
         </p>
       </div>
     </div>
+
+    {/* Share Menu */}
+    <ShareMenu
+      isOpen={showShareMenu}
+      onClose={() => setShowShareMenu(false)}
+      onShare={handleShare}
+      onTweet={handleTwitterShare}
+      shareLink={shareLink}
+    />
+    </>
   );
 };
 
