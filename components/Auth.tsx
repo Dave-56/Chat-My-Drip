@@ -34,10 +34,13 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const handleGoogleSignIn = async () => {
     try {
       setSigningIn(true);
+      // Build redirect URL - preserve current path
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${window.location.pathname.startsWith('/chatmydrip') ? '/chatmydrip' : ''}`,
+          redirectTo,
         },
       });
 

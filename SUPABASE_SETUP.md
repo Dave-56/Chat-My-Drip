@@ -58,13 +58,14 @@ If you've purchased a custom domain for Supabase:
    ```
 3. Add these to **Redirect URLs** (comma-separated, one per line):
    ```
-   http://localhost:5173
-   http://localhost:3000
+   http://localhost:5173/chatmydrip
+   http://localhost:3000/chatmydrip
    https://www.getsensei.dev/chatmydrip
    https://getsensei.dev/chatmydrip
    ```
-   - `http://localhost:5173` - For Vite dev server (default port)
-   - `http://localhost:3000` - If you use a different port
+   **Important**: Include the `/chatmydrip` path for localhost URLs since your app uses a base path!
+   - `http://localhost:5173/chatmydrip` - For Vite dev server (if using default port)
+   - `http://localhost:3000/chatmydrip` - For your configured port (from vite.config.ts)
    - `https://www.getsensei.dev/chatmydrip` - Production URL (with www)
    - `https://getsensei.dev/chatmydrip` - Production URL (without www)
 4. Click **Save**
