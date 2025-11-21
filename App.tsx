@@ -9,8 +9,9 @@ import { SavedOutfitView } from './components/SavedOutfitView';
 import { analyzeFit, createStylistChat } from './services/geminiService';
 import { AppState, UploadedImage, AnalysisResult, SavedOutfit } from './types';
 import { getSavedOutfit, saveOutfit } from './utils/outfitStorage';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Chat } from "@google/genai";
+import { isNetworkError, RetryableError } from './utils/errorRecovery';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppState>(AppState.LANDING);
@@ -20,20 +21,30 @@ const App: React.FC = () => {
   const [chatSession, setChatSession] = useState<Chat | null>(null);
   const [savedOutfit, setSavedOutfit] = useState<SavedOutfit | null>(null);
   const [previousView, setPreviousView] = useState<AppState | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const handleStart = () => {
     setView(AppState.PREVIEW);
     setError(null);
   };
 
-  const handleImageSelected = async (selectedImage: UploadedImage) => {
-    setImage(selectedImage);
-    setView(AppState.ANALYZING);
-    setError(null);
+  const handleImageSelected = async (selectedImage: UploadedImage, isRetry = false) => {
+    if (!isRetry) {
+      setImage(selectedImage);
+      setView(AppState.ANALYZING);
+      setError(null);
+      setRetryCount(0);
+    } else {
+      setIsRetrying(true);
+      setRetryCount(prev => prev + 1);
+    }
 
     try {
       const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType);
       setResult(analysis);
+      setIsRetrying(false);
+      setRetryCount(0);
       
       // Auto-save outfit when results are ready
       let savedOutfitId: string | null = null;
@@ -52,8 +63,26 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to analyze image. Make sure your API key is valid and the image is clear.");
+      setIsRetrying(false);
+      
+      let errorMessage = "Failed to analyze image. Make sure your API key is valid and the image is clear.";
+      
+      if (err instanceof RetryableError) {
+        errorMessage = err.message || "Network error. Please check your connection and try again.";
+      } else if (isNetworkError(err)) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setView(AppState.ERROR);
+    }
+  };
+
+  const handleRetry = () => {
+    if (image) {
+      handleImageSelected(image, true);
     }
   };
 
@@ -196,13 +225,35 @@ const App: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-slide-up">
               <AlertTriangle className="text-red-500 mb-4" size={48} />
               <h2 className="text-2xl font-display font-bold text-white mb-2">OOF! ERROR.</h2>
-              <p className="text-gray-400 mb-6">{error}</p>
-              <button 
-                onClick={handleReset}
-                className="bg-white text-black font-bold px-8 py-3 rounded-full font-display hover:bg-gray-200 transition-colors"
-              >
-                TRY AGAIN
-              </button>
+              <p className="text-gray-400 mb-2 px-4">{error}</p>
+              {retryCount > 0 && (
+                <p className="text-gray-500 text-sm mb-4">Retry attempt {retryCount}/3</p>
+              )}
+              <div className="flex flex-col gap-3 w-full max-w-xs">
+                <button 
+                  onClick={handleRetry}
+                  disabled={isRetrying || !image}
+                  className="bg-drip-accent text-white font-bold px-8 py-3 rounded-full font-display hover:bg-drip-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isRetrying ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={20} />
+                      RETRYING...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={20} />
+                      RETRY
+                    </>
+                  )}
+                </button>
+                <button 
+                  onClick={handleReset}
+                  className="bg-drip-gray text-white font-bold px-8 py-3 rounded-full font-display hover:bg-drip-gray/80 transition-colors"
+                >
+                  START OVER
+                </button>
+              </div>
             </div>
           )}
 

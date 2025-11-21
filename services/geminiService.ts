@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
 import { AnalysisResult } from "../types";
+import { withRetry, RetryableError, isNetworkError } from "../utils/errorRecovery";
 
 // Debug: Check if API key is loaded
 if (!process.env.API_KEY || process.env.API_KEY === 'undefined' || process.env.API_KEY.includes('your_api_key')) {
@@ -43,47 +44,64 @@ const responseSchema: Schema = {
 };
 
 export const analyzeFit = async (base64Image: string, mimeType: string): Promise<AnalysisResult> => {
-  try {
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Image,
-            },
+  return withRetry(
+    async () => {
+      try {
+        const response = await genAI.models.generateContent({
+          model: "gemini-2.0-flash-exp",
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Image,
+                },
+              },
+              {
+                text: `You are a brutal but helpful Gen Z fashion stylist. Analyze this outfit. 
+                
+                Rules:
+                1. DO NOT comment on the person's body, weight, or physical features. ONLY comment on clothes, fit, color, and styling.
+                2. Use current fashion slang naturally (drip, ate, mid, clean, fire, aesthetic).
+                3. Be honest. If it's bad, say it's bad (but help fix it).
+                4. Return the result as JSON matching the schema.
+                `,
+              },
+            ],
           },
-          {
-            text: `You are a brutal but helpful Gen Z fashion stylist. Analyze this outfit. 
-            
-            Rules:
-            1. DO NOT comment on the person's body, weight, or physical features. ONLY comment on clothes, fit, color, and styling.
-            2. Use current fashion slang naturally (drip, ate, mid, clean, fire, aesthetic).
-            3. Be honest. If it's bad, say it's bad (but help fix it).
-            4. Return the result as JSON matching the schema.
-            `,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: responseSchema,
+            temperature: 0.7, // Slightly creative
           },
-        ],
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.7, // Slightly creative
-      },
-    });
+        });
 
-    if (!response.text) {
-      throw new Error("No response text received from Gemini.");
+        if (!response.text) {
+          throw new RetryableError("No response text received from Gemini.", undefined, true);
+        }
+
+        const data = JSON.parse(response.text);
+        return data as AnalysisResult;
+      } catch (error) {
+        // Wrap network errors as retryable
+        if (isNetworkError(error)) {
+          throw new RetryableError(
+            "Network error. Please check your connection and try again.",
+            error instanceof Error ? error : undefined,
+            true
+          );
+        }
+        // Re-throw non-retryable errors
+        throw error;
+      }
+    },
+    {
+      maxRetries: 3,
+      initialDelay: 1000,
+      maxDelay: 5000,
+      backoffMultiplier: 2,
     }
-
-    const data = JSON.parse(response.text);
-    return data as AnalysisResult;
-
-  } catch (error) {
-    console.error("Error analyzing fit:", error);
-    throw error;
-  }
+  );
 };
 
 export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): Chat => {

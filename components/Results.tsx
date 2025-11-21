@@ -4,6 +4,7 @@ import { AnalysisResult, UploadedImage } from '../types';
 import { getShareableLink, getSavedOutfits } from '../utils/outfitStorage';
 import { Toast } from './Toast';
 import { ShareMenu } from './ShareMenu';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
 
 interface ResultsProps {
   image: UploadedImage;
@@ -29,6 +30,19 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
+
+  // Swipe left to go back/home
+  const { ref: swipeRef, swipeProgress, isSwiping } = useSwipeGesture({
+    onSwipeLeft: () => {
+      if (onGoHome) {
+        onGoHome();
+      } else {
+        onReset();
+      }
+    },
+    threshold: 80,
+    preventScroll: true,
+  });
 
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
@@ -91,7 +105,14 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
           onClose={() => setToast(null)}
         />
       )}
-      <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
+      <div 
+        ref={swipeRef as React.RefObject<HTMLDivElement>}
+        className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain relative"
+        style={{
+          transform: isSwiping ? `translateX(${swipeProgress * 20}px)` : 'translateX(0)',
+          transition: isSwiping ? 'none' : 'transform 0.2s ease-out',
+        }}
+      >
       {/* Header Image & Score Overlay */}
       <div className="relative w-full aspect-square shrink-0">
         <img 
