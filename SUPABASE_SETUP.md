@@ -12,7 +12,19 @@ Follow these steps to set up Supabase for ChatMyDrip:
    - **Region**: Choose closest to your users
 4. Click "Create new project" and wait for it to initialize (~2 minutes)
 
-## Step 2: Set Up Google OAuth
+## Step 2: Set Up Custom Domain (If Using One)
+
+If you've purchased a custom domain for Supabase:
+
+1. In Supabase dashboard, go to **Settings** → **Custom Domain**
+2. Add your custom domain (e.g., `supabase.getsensei.dev` or `api.getsensei.dev`)
+3. Follow Supabase's DNS instructions to add the required CNAME records
+4. Wait for DNS propagation (can take a few minutes to hours)
+5. Once verified, your Supabase URL will be your custom domain instead of `*.supabase.co`
+
+**Note**: After setting up the custom domain, update your `VITE_SUPABASE_URL` environment variable to use the custom domain.
+
+## Step 3: Set Up Google OAuth
 
 1. In your Supabase project dashboard, go to **Authentication** → **Providers**
 2. Find **Google** and click to enable it
@@ -24,9 +36,13 @@ Follow these steps to set up Supabase for ChatMyDrip:
    - Application type: **Web application**
    - Authorized redirect URIs: Add your Supabase redirect URL:
      ```
+     https://YOUR_CUSTOM_DOMAIN/auth/v1/callback
+     ```
+     OR if using default Supabase domain:
+     ```
      https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback
      ```
-     (Find YOUR_PROJECT_REF in your Supabase project settings → API)
+     (Use your custom domain if configured, otherwise use the default Supabase domain from project settings → API)
    - Copy the **Client ID** and **Client Secret**
 4. Back in Supabase, paste:
    - **Client ID (for OAuth)**
@@ -36,22 +52,29 @@ Follow these steps to set up Supabase for ChatMyDrip:
 ### Important: Configure Site URL and Redirect URLs
 
 1. In Supabase dashboard, go to **Authentication** → **URL Configuration**
-2. Add these to **Site URL** (use your production URL):
+2. Set **Site URL** to your production URL:
    ```
-   https://chatmydrip.vercel.app
+   https://www.getsensei.dev/chatmydrip
    ```
-3. Add these to **Redirect URLs** (comma-separated):
+3. Add these to **Redirect URLs** (comma-separated, one per line):
    ```
-   http://localhost:5173,http://localhost:3000,https://chatmydrip.vercel.app
+   http://localhost:5173
+   http://localhost:3000
+   https://www.getsensei.dev/chatmydrip
+   https://getsensei.dev/chatmydrip
    ```
-   - Add `http://localhost:5173` for Vite dev server (default port)
-   - Add `http://localhost:3000` if you use a different port
-   - Add your production URL
+   - `http://localhost:5173` - For Vite dev server (default port)
+   - `http://localhost:3000` - If you use a different port
+   - `https://www.getsensei.dev/chatmydrip` - Production URL (with www)
+   - `https://getsensei.dev/chatmydrip` - Production URL (without www)
 4. Click **Save**
 
-**Note**: Without localhost in the redirect URLs, sign out may not work properly on localhost!
+**Note**: 
+- The **Site URL** is where users will be redirected after sign-in
+- **Redirect URLs** must include all URLs where authentication callbacks can occur
+- Without localhost in the redirect URLs, sign out may not work properly on localhost!
 
-## Step 3: Create Database Tables
+## Step 4: Create Database Tables
 
 1. In Supabase dashboard, go to **SQL Editor**
 2. Click **New Query**
@@ -59,19 +82,23 @@ Follow these steps to set up Supabase for ChatMyDrip:
 4. Click **Run** (or press Cmd/Ctrl + Enter)
 5. You should see "Success. No rows returned"
 
-## Step 4: Get Your API Keys
+## Step 5: Get Your API Keys
 
 1. In Supabase dashboard, go to **Settings** → **API**
 2. Copy these values:
-   - **Project URL** (this is your `VITE_SUPABASE_URL`)
+   - **Project URL** (this is your `VITE_SUPABASE_URL` - use your custom domain if configured, otherwise the default `*.supabase.co` URL)
    - **anon public** key (this is your `VITE_SUPABASE_ANON_KEY`)
 
-## Step 5: Add Environment Variables
+**Important**: If you're using a custom domain, make sure to use the custom domain URL (e.g., `https://supabase.getsensei.dev`) instead of the default Supabase URL.
+
+## Step 6: Add Environment Variables
 
 1. Create/update `.env.local` file in your project root:
    ```env
    # Supabase (required)
-   VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   # Use your custom domain if configured, otherwise use the default Supabase URL
+   VITE_SUPABASE_URL=https://YOUR_CUSTOM_DOMAIN
+   # OR if using default: https://YOUR_PROJECT_REF.supabase.co
    VITE_SUPABASE_ANON_KEY=your_anon_key_here
 
    # AI Provider (optional - defaults to Gemini)
@@ -89,7 +116,7 @@ Follow these steps to set up Supabase for ChatMyDrip:
 
 **Note**: See `AI_PROVIDER_SETUP.md` for detailed instructions on switching between AI providers.
 
-## Step 6: Test the Setup
+## Step 7: Test the Setup
 
 1. Run `npm run dev`
 2. You should see the Google sign-in button
