@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Send, ArrowLeft, Sparkles } from 'lucide-react';
-import { ChatMessage, UploadedImage } from '../types';
-import { Chat } from "@google/genai";
+import { ChatMessage, UploadedImage, ChatSession } from '../types';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
+import { ChatMessageSkeleton } from './LoadingSkeleton';
 
 interface ChatInterfaceProps {
-  chatSession: Chat;
+  chatSession: ChatSession;
   image: UploadedImage;
   onBack: () => void;
 }
@@ -20,17 +21,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // Swipe left to go back
+  const { ref: swipeRef, swipeProgress, isSwiping } = useSwipeGesture({
+    onSwipeLeft: onBack,
+    threshold: 100,
+    preventScroll: true,
+  });
 
-    const userMsg: ChatMessage = {
+  const handleSend = async (retryMessage?: ChatMessage) => {
+    const messageToSend = retryMessage || input.trim();
+    if (!messageToSend || isLoading) return;
+
+    const userMsg: ChatMessage = retryMessage || {
       id: Date.now().toString(),
       role: 'user',
       text: input
     };
 
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    if (!retryMessage) {
+      setMessages(prev => [...prev, userMsg]);
+      setInput('');
+    }
     setIsLoading(true);
 
     try {
@@ -43,11 +54,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
       setMessages(prev => [...prev, aiMsg]);
     } catch (error) {
       console.error("Chat error", error);
-      setMessages(prev => [...prev, {
+      const errorMsg: ChatMessage = {
         id: Date.now().toString(),
         role: 'model',
-        text: "Something glitched. Try again?"
-      }]);
+        text: "Something glitched. Tap to retry?",
+        retryable: true,
+        originalMessage: userMsg,
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +76,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
 
   return (
     // Flex Column Layout: Header (Fixed) + Body (Flex) + Footer (Fixed)
-    <div className="flex flex-col h-full w-full bg-drip-black overflow-hidden relative">
+    <div 
+      ref={swipeRef as React.RefObject<HTMLDivElement>}
+      className="flex flex-col h-full w-full bg-drip-black overflow-hidden relative"
+      style={{
+        transform: isSwiping ? `translateX(${swipeProgress * 20}px)` : 'translateX(0)',
+        transition: isSwiping ? 'none' : 'transform 0.2s ease-out',
+      }}
+    >
       
       {/* Header: Fixed at top, always visible */}
       <header className="shrink-0 h-[72px] bg-drip-dark border-b-2 border-white/50 flex items-center gap-3 px-4 shadow-lg z-50 safe-area-top" style={{ backgroundColor: '#1a1a1a' }}>
@@ -102,9 +123,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
           >
             <div 
+              onClick={msg.retryable && msg.originalMessage ? () => {
+                // Remove error message and retry
+                setMessages(prev => prev.filter(m => m.id !== msg.id));
+                handleSend(msg.originalMessage);
+              } : undefined}
               className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
                 msg.role === 'user' 
                   ? 'bg-drip-accent text-white rounded-tr-sm' 
+                  : msg.retryable
+                  ? 'bg-red-500/20 text-red-300 rounded-tl-sm border border-red-500/50 cursor-pointer hover:bg-red-500/30 transition-colors'
                   : 'bg-drip-gray text-gray-200 rounded-tl-sm border border-white/5'
               }`}
             >
@@ -112,17 +140,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start animate-pulse">
-            <div className="bg-drip-gray p-4 rounded-2xl rounded-tl-sm border border-white/5">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
-                <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-              </div>
-            </div>
-          </div>
-        )}
+        {isLoading && <ChatMessageSkeleton />}
       </div>
 
       {/* Footer: Shrink-0 ensures input is always visible */}

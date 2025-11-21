@@ -1,11 +1,35 @@
-import React from 'react';
-import { TrendingUp, TrendingDown, Award, Target, BarChart3 } from 'lucide-react';
-import { calculateStats } from '../utils/statsUtils';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Award, Target, BarChart3, Loader2 } from 'lucide-react';
+import { calculateStats, StyleStats } from '../utils/statsUtils';
 
 export const StatsDashboard: React.FC = () => {
-  const stats = calculateStats();
+  const [stats, setStats] = useState<StyleStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (stats.totalOutfits === 0) {
+  useEffect(() => {
+    const loadStats = async () => {
+      setLoading(true);
+      try {
+        const calculatedStats = await calculateStats();
+        setStats(calculatedStats);
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <Loader2 className="animate-spin text-drip-accent" size={48} />
+      </div>
+    );
+  }
+
+  if (!stats || stats.totalOutfits === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
         <BarChart3 className="text-drip-gray mb-4" size={64} />

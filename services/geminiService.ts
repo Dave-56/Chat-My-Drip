@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
-import { AnalysisResult } from "../types";
+import { AnalysisResult, ChatSession } from "../types";
+import { withRetry, RetryableError, isNetworkError } from "../utils/errorRecovery";
 
 // Debug: Check if API key is loaded
 if (!process.env.API_KEY || process.env.API_KEY === 'undefined' || process.env.API_KEY.includes('your_api_key')) {
@@ -43,51 +44,77 @@ const responseSchema: Schema = {
 };
 
 export const analyzeFit = async (base64Image: string, mimeType: string): Promise<AnalysisResult> => {
-  try {
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Image,
-            },
+  return withRetry(
+    async () => {
+      try {
+        const response = await genAI.models.generateContent({
+          model: "gemini-2.0-flash-exp",
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Image,
+                },
+              },
+              {
+                text: `You are a brutal but helpful Gen Z fashion stylist with deep knowledge of fashion, brands, and style. Analyze this outfit carefully and accurately.
+                
+                CRITICAL: Before making any judgments, carefully observe and identify:
+                - Specific brands, logos, and luxury items (Bottega Veneta, Prada, Gucci, etc.)
+                - Exact fit types: straight-leg, slim-fit, baggy, relaxed, tapered, wide-leg, etc.
+                - Materials and textures: linen, denim, silk, cotton, leather, etc.
+                - Style categories: streetwear, minimalism, Y2K, quiet luxury, etc.
+                
+                Rules:
+                1. DO NOT comment on the person's body, weight, or physical features. ONLY comment on clothes, fit, color, and styling.
+                2. Be FACTUALLY ACCURATE. If you see a luxury brand item, recognize it. If pants are straight-leg, don't call them baggy. Observe carefully before judging.
+                3. Use current fashion slang naturally (drip, ate, mid, clean, fire, aesthetic, no cap, slay, giving, etc.) but maintain accuracy.
+                4. Recognize luxury and designer items - don't call expensive/designer pieces "basic" unless they're genuinely basic styling choices.
+                5. Understand fit terminology: straight-leg ≠ baggy, slim-fit ≠ tight, relaxed ≠ oversized. Be precise.
+                6. Be honest but informed. If it's bad, say it's bad (but help fix it). If it's fire, recognize it.
+                7. Return the result as JSON matching the schema.
+                `,
+              },
+            ],
           },
-          {
-            text: `You are a brutal but helpful Gen Z fashion stylist. Analyze this outfit. 
-            
-            Rules:
-            1. DO NOT comment on the person's body, weight, or physical features. ONLY comment on clothes, fit, color, and styling.
-            2. Use current fashion slang naturally (drip, ate, mid, clean, fire, aesthetic).
-            3. Be honest. If it's bad, say it's bad (but help fix it).
-            4. Return the result as JSON matching the schema.
-            `,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: responseSchema,
+            temperature: 0.7, // Slightly creative
           },
-        ],
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.7, // Slightly creative
-      },
-    });
+        });
 
-    if (!response.text) {
-      throw new Error("No response text received from Gemini.");
+        if (!response.text) {
+          throw new RetryableError("No response text received from Gemini.", undefined, true);
+        }
+
+        const data = JSON.parse(response.text);
+        return data as AnalysisResult;
+      } catch (error) {
+        // Wrap network errors as retryable
+        if (isNetworkError(error)) {
+          throw new RetryableError(
+            "Network error. Please check your connection and try again.",
+            error instanceof Error ? error : undefined,
+            true
+          );
+        }
+        // Re-throw non-retryable errors
+        throw error;
+      }
+    },
+    {
+      maxRetries: 3,
+      initialDelay: 1000,
+      maxDelay: 5000,
+      backoffMultiplier: 2,
     }
-
-    const data = JSON.parse(response.text);
-    return data as AnalysisResult;
-
-  } catch (error) {
-    console.error("Error analyzing fit:", error);
-    throw error;
-  }
+  );
 };
 
-export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): Chat => {
-  return genAI.chats.create({
+export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): ChatSession => {
+  const geminiChat = genAI.chats.create({
     model: "gemini-2.0-flash-exp",
     history: [
       {
@@ -114,16 +141,33 @@ export const createStylistChat = (base64Image: string, mimeType: string, previou
       }
     ],
     config: {
-      systemInstruction: `You are Drip, a Gen Z fashion stylist having a text conversation with a user about their outfit. 
+      systemInstruction: `You are Drip, a knowledgeable Gen Z fashion stylist having a text conversation with a user about their outfit. 
       You have already analyzed their photo. The user sees your previous analysis and might ask for clarification (e.g., "Why is the white basic?").
       
+      IMPORTANT: You have deep fashion knowledge including:
+      - Brand recognition (luxury, streetwear, contemporary, etc.)
+      - Fit terminology (straight-leg, slim-fit, baggy, relaxed, etc.)
+      - Style categories and trends
+      - Material and texture identification
+      
       Rules:
-      1. Your name is Drip. Be conversational, helpful, and trendy. Use slang (drip, no cap, bet, slay) but don't overdo it.
-      2. Explain your styling choices clearly.
-      3. If they ask how to fix something, give specific examples (brands, types of items).
-      4. Keep responses relatively short (max 2-3 sentences unless explaining a complex style).
-      5. Do NOT return JSON. Return plain text.
+      1. Your name is Drip. Be conversational, helpful, and trendy. Use slang (drip, no cap, bet, slay, giving, ate, fire) but don't overdo it.
+      2. Be FACTUALLY ACCURATE. If you made an error in the initial analysis, acknowledge it. Don't double down on mistakes.
+      3. Explain your styling choices clearly with specific fashion knowledge.
+      4. If they ask how to fix something, give specific examples (brands, types of items, fit styles).
+      5. Recognize luxury items and don't dismiss them as "basic" unless the styling choice itself is basic.
+      6. Use correct fit terminology - straight-leg pants are not baggy, slim-fit is not tight, etc.
+      7. Keep responses relatively short (max 2-3 sentences unless explaining a complex style).
+      8. Do NOT return JSON. Return plain text.
       `,
     },
   });
+
+  // Wrap Gemini Chat to match ChatSession interface
+  return {
+    sendMessage: async (options: { message: string }) => {
+      const response = await geminiChat.sendMessage({ message: options.message });
+      return { text: response.text || "" };
+    }
+  };
 };

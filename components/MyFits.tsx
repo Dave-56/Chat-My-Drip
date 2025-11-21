@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { ArrowLeft, BarChart3 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowLeft, BarChart3, Trash2 } from 'lucide-react';
 import { 
   getSavedOutfits, 
   deleteOutfit
-} from '../utils/outfitStorage';
+} from '../utils/supabaseStorage';
 import { SavedOutfit } from '../types';
 import { StatsDashboard } from './StatsDashboard';
+import { SwipeableOutfitCard } from './SwipeableOutfitCard';
+import { MyFitsSkeleton } from './LoadingSkeleton';
 
 interface MyFitsProps {
   onBack: () => void;
@@ -16,17 +18,35 @@ type ViewMode = 'fits' | 'stats';
 
 export const MyFits: React.FC<MyFitsProps> = ({ onBack, onViewOutfit }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('fits');
-  const [outfits, setOutfits] = useState<SavedOutfit[]>(getSavedOutfits());
+  const [outfits, setOutfits] = useState<SavedOutfit[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const refreshData = () => {
-    setOutfits(getSavedOutfits());
+  React.useEffect(() => {
+    loadOutfits();
+  }, []);
+
+  const loadOutfits = async () => {
+    setLoading(true);
+    try {
+      const loadedOutfits = await getSavedOutfits();
+      setOutfits(loadedOutfits);
+    } catch (error) {
+      console.error('Error loading outfits:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('Delete this outfit?')) {
-      deleteOutfit(id);
-      refreshData();
+  const refreshData = async () => {
+    await loadOutfits();
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteOutfit(id);
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting outfit:', error);
     }
   };
 
@@ -97,6 +117,11 @@ export const MyFits: React.FC<MyFitsProps> = ({ onBack, onViewOutfit }) => {
       {/* Fits View - Only show in fits mode */}
       {viewMode === 'fits' && (
         <>
+      {/* Loading State */}
+      {loading ? (
+        <MyFitsSkeleton />
+      ) : (
+        <>
       {/* Empty State */}
       {outfits.length === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -116,52 +141,19 @@ export const MyFits: React.FC<MyFitsProps> = ({ onBack, onViewOutfit }) => {
             {masonryColumns.map((column, colIndex) => (
               <div key={colIndex} className="flex flex-col gap-4">
                 {column.map((outfit) => (
-                  <div
+                  <SwipeableOutfitCard
                     key={outfit.id}
-                    onClick={() => onViewOutfit(outfit.id)}
-                    className="relative bg-drip-dark rounded-xl overflow-hidden border border-drip-gray cursor-pointer group hover:border-drip-accent transition-all hover:scale-[1.02]"
-                  >
-                    <div className="aspect-[3/4] relative">
-                      <img 
-                        src={outfit.image.previewUrl} 
-                        alt="Saved outfit" 
-                        className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-                      />
-                      
-                      {/* Score overlay - color coded */}
-                      {(() => {
-                        const score = outfit.analysis.score;
-                        const scoreColor = score >= 8 ? 'text-drip-lime' : score >= 5 ? 'text-drip-accent' : 'text-red-500';
-                        const scoreBg = score >= 8 ? 'bg-drip-lime/20 border-drip-lime/50' : score >= 5 ? 'bg-drip-accent/20 border-drip-accent/50' : 'bg-red-500/20 border-red-500/50';
-                        return (
-                          <div className={`absolute top-2 right-2 ${scoreBg} backdrop-blur-sm px-2.5 py-1 rounded-full border`}>
-                            <span className={`${scoreColor} font-display font-bold text-lg`}>{score}</span>
-                            <span className="text-white/80 text-xs">/10</span>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Gradient overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/90 to-transparent p-3">
-                        <p className="text-white font-display font-bold text-sm uppercase line-clamp-1">
-                          {outfit.analysis.vibe}
-                        </p>
-                        <p className="text-gray-400 text-[10px] mt-0.5">
-                          {new Date(outfit.savedAt).toLocaleDateString('en-US', { 
-                            month: 'numeric', 
-                            day: 'numeric', 
-                            year: 'numeric' 
-                          })}
-                        </p>
-                      </div>
-                    </div>
-
-                  </div>
+                    outfit={outfit}
+                    onView={() => onViewOutfit(outfit.id)}
+                    onDelete={() => handleDelete(outfit.id)}
+                  />
                 ))}
               </div>
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
         </>
       )}

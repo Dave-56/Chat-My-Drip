@@ -28,6 +28,8 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   text: string;
+  retryable?: boolean;
+  originalMessage?: ChatMessage;
 }
 
 export interface SavedOutfit {
@@ -45,4 +47,9 @@ export interface Collection {
   color?: string; // Optional color for the collection
   createdAt: number; // timestamp
   outfitIds: string[]; // IDs of outfits in this collection
+}
+
+// Common interface for chat sessions (works with both Gemini and OpenAI)
+export interface ChatSession {
+  sendMessage(options: { message: string }): Promise<{ text: string }>;
 }

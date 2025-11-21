@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { UploadedImage } from '../types';
+import { ResultsSkeleton } from './LoadingSkeleton';
 
 interface LoadingProps {
   image: UploadedImage;
+  useSkeleton?: boolean;
 }
 
 const MESSAGES = [
@@ -15,7 +17,7 @@ const MESSAGES = [
   "Judging respectfully..."
 ];
 
-export const Loading: React.FC<LoadingProps> = ({ image }) => {
+export const Loading: React.FC<LoadingProps> = ({ image, useSkeleton = true }) => {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
@@ -25,6 +27,12 @@ export const Loading: React.FC<LoadingProps> = ({ image }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Use skeleton loader for better UX
+  if (useSkeleton) {
+    return <ResultsSkeleton />;
+  }
+
+  // Fallback to original loading animation
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-slide-up">
       <div className="relative w-48 h-48 mb-8">

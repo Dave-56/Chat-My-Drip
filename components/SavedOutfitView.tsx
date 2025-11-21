@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Share2, AlertCircle, CheckCircle, ShoppingBag, MessageCircle } from 'lucide-react';
 import { SavedOutfit, UploadedImage, AnalysisResult } from '../types';
-import { getShareableLink } from '../utils/outfitStorage';
+import { getShareableLink } from '../utils/supabaseStorage';
 import { Toast } from './Toast';
 import { ShareMenu } from './ShareMenu';
 

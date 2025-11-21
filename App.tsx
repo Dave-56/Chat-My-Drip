@@ -6,39 +6,178 @@ import { Results } from './components/Results';
 import { ChatInterface } from './components/ChatInterface';
 import { MyFits } from './components/MyFits';
 import { SavedOutfitView } from './components/SavedOutfitView';
-import { analyzeFit, createStylistChat } from './services/geminiService';
-import { AppState, UploadedImage, AnalysisResult, SavedOutfit } from './types';
-import { getSavedOutfit, saveOutfit } from './utils/outfitStorage';
-import { AlertTriangle } from 'lucide-react';
-import { Chat } from "@google/genai";
+import { analyzeFit as analyzeFitGemini, createStylistChat as createStylistChatGemini } from './services/geminiService';
+import { analyzeFit as analyzeFitOpenAI, createStylistChat as createStylistChatOpenAI } from './services/openaiService';
+import { AppState, UploadedImage, AnalysisResult, SavedOutfit, ChatSession } from './types';
+import { getSavedOutfit, saveOutfit, getSavedOutfits } from './utils/supabaseStorage';
+import { supabase } from './utils/supabaseClient';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { isNetworkError, RetryableError } from './utils/errorRecovery';
+
+// Service selector with priority:
+// 1. If AI_PROVIDER is explicitly set, use that
+// 2. If only one API key is available, use that service
+// 3. If both are available and no preference, default to Gemini (original)
+const hasGeminiKey = process.env.API_KEY && 
+                     process.env.API_KEY !== 'undefined' && 
+                     !process.env.API_KEY.includes('your_api_key');
+const hasOpenAIKey = process.env.OPENAI_API_KEY && 
+                     process.env.OPENAI_API_KEY !== 'undefined' && 
+                     !process.env.OPENAI_API_KEY.includes('your_api_key');
+const explicitProvider = process.env.AI_PROVIDER?.toLowerCase();
+
+let useOpenAI: boolean;
+if (explicitProvider === 'openai' || explicitProvider === 'chatgpt') {
+  useOpenAI = true;
+} else if (explicitProvider === 'gemini') {
+  useOpenAI = false;
+} else if (hasOpenAIKey && !hasGeminiKey) {
+  useOpenAI = true; // Only OpenAI key available
+} else if (hasGeminiKey && !hasOpenAIKey) {
+  useOpenAI = false; // Only Gemini key available
+} else if (hasOpenAIKey && hasGeminiKey) {
+  useOpenAI = false; // Both available, default to Gemini (original)
+} else {
+  useOpenAI = false; // No keys, default to Gemini (will error but consistent)
+}
+
+const analyzeFit = useOpenAI ? analyzeFitOpenAI : analyzeFitGemini;
+const createStylistChat = useOpenAI ? createStylistChatOpenAI : createStylistChatGemini;
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppState>(AppState.LANDING);
   const [image, setImage] = useState<UploadedImage | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [savedOutfit, setSavedOutfit] = useState<SavedOutfit | null>(null);
   const [previousView, setPreviousView] = useState<AppState | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = checking
+
+  // Check auth status on mount and load most recent outfit if available
+  useEffect(() => {
+    const checkAuthAndLoadRecent = async () => {
+      // Skip if there's a hash (shareable link will handle it)
+      if (window.location.hash.startsWith('#/fit/')) {
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const authenticated = !!session;
+      setIsAuthenticated(authenticated);
+      
+      // If authenticated and on landing, check for recent outfit
+      if (authenticated && view === AppState.LANDING) {
+        try {
+          const outfits = await getSavedOutfits();
+          if (outfits.length > 0) {
+            // Load the most recent outfit (first in array, sorted by saved_at desc)
+            const mostRecent = outfits[0];
+            setSavedOutfit(mostRecent);
+            setImage(mostRecent.image);
+            setResult(mostRecent.analysis);
+            setView(AppState.RESULT);
+          } else {
+            // No outfits, go to upload screen
+            setView(AppState.PREVIEW);
+          }
+        } catch (error) {
+          console.error('Error loading recent outfit:', error);
+          // On error, default to upload screen
+          setView(AppState.PREVIEW);
+        }
+      }
+    };
+
+    checkAuthAndLoadRecent();
+
+    // Listen for auth changes (e.g., after OAuth redirect)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const authenticated = !!session;
+      setIsAuthenticated(authenticated);
+      // If user just signed in, check for recent outfit
+      if (authenticated) {
+        try {
+          const outfits = await getSavedOutfits();
+          if (outfits.length > 0) {
+            // Load the most recent outfit
+            const mostRecent = outfits[0];
+            setSavedOutfit(mostRecent);
+            setImage(mostRecent.image);
+            setResult(mostRecent.analysis);
+            setView(AppState.RESULT);
+          } else {
+            // No outfits, go to upload screen
+            setView(AppState.PREVIEW);
+          }
+        } catch (error) {
+          console.error('Error loading recent outfit:', error);
+          // On error, default to upload screen
+          setView(AppState.PREVIEW);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAuthSuccess = async () => {
+    setIsAuthenticated(true);
+    // After sign-in, check for recent outfit or go to upload screen
+    try {
+      const outfits = await getSavedOutfits();
+      if (outfits.length > 0) {
+        // Load the most recent outfit
+        const mostRecent = outfits[0];
+        setSavedOutfit(mostRecent);
+        setImage(mostRecent.image);
+        setResult(mostRecent.analysis);
+        setView(AppState.RESULT);
+      } else {
+        // No outfits, go to upload screen
+        setView(AppState.PREVIEW);
+      }
+    } catch (error) {
+      console.error('Error loading recent outfit:', error);
+      // On error, default to upload screen
+      setView(AppState.PREVIEW);
+    }
+  };
 
   const handleStart = () => {
     setView(AppState.PREVIEW);
     setError(null);
   };
 
-  const handleImageSelected = async (selectedImage: UploadedImage) => {
-    setImage(selectedImage);
-    setView(AppState.ANALYZING);
-    setError(null);
+  const handleImageSelected = async (selectedImage: UploadedImage, isRetry = false) => {
+    if (!isRetry) {
+      setImage(selectedImage);
+      setView(AppState.ANALYZING);
+      setError(null);
+      setRetryCount(0);
+    } else {
+      setIsRetrying(true);
+      setRetryCount(prev => prev + 1);
+    }
 
     try {
       const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType);
       setResult(analysis);
+      setIsRetrying(false);
+      setRetryCount(0);
       
       // Auto-save outfit when results are ready
       let savedOutfitId: string | null = null;
       try {
-        const savedOutfit = await saveOutfit(selectedImage, analysis);
+        // Auto-generate name from analysis
+        const outfitName = analysis.score >= 8 
+          ? `Fire Fit - ${analysis.vibe}`
+          : `${analysis.vibe} Fit`;
+        const savedOutfit = await saveOutfit(selectedImage, analysis, outfitName);
         savedOutfitId = savedOutfit.id;
       } catch (saveError) {
         // Log but don't block UI if save fails
@@ -52,8 +191,26 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to analyze image. Make sure your API key is valid and the image is clear.");
+      setIsRetrying(false);
+      
+      let errorMessage = "Failed to analyze image. Make sure your API key is valid and the image is clear.";
+      
+      if (err instanceof RetryableError) {
+        errorMessage = err.message || "Network error. Please check your connection and try again.";
+      } else if (isNetworkError(err)) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setView(AppState.ERROR);
+    }
+  };
+
+  const handleRetry = () => {
+    if (image) {
+      handleImageSelected(image, true);
     }
   };
 
@@ -108,19 +265,22 @@ const App: React.FC = () => {
 
   // Handle shareable links (hash-based routing)
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#/fit/')) {
-      const outfitId = hash.replace('#/fit/', '');
-      const outfit = getSavedOutfit(outfitId);
-      if (outfit) {
-        setSavedOutfit(outfit);
-        setImage(outfit.image);
-        setResult(outfit.analysis);
-        setView(AppState.SAVED_OUTFIT);
+    const loadOutfit = async () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/fit/')) {
+        const outfitId = hash.replace('#/fit/', '');
+        const outfit = await getSavedOutfit(outfitId);
+        if (outfit) {
+          setSavedOutfit(outfit);
+          setImage(outfit.image);
+          setResult(outfit.analysis);
+          setView(AppState.SAVED_OUTFIT);
+        }
+        // Clean up hash after loading
+        window.history.replaceState(null, '', window.location.pathname);
       }
-      // Clean up hash after loading
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    };
+    loadOutfit();
   }, []);
 
   const handleViewMyFits = () => {
@@ -128,8 +288,8 @@ const App: React.FC = () => {
     setView(AppState.MY_FITS);
   };
 
-  const handleViewSavedOutfit = (outfitId: string) => {
-    const outfit = getSavedOutfit(outfitId);
+  const handleViewSavedOutfit = async (outfitId: string) => {
+    const outfit = await getSavedOutfit(outfitId);
     if (outfit) {
       setSavedOutfit(outfit);
       setImage(outfit.image);
@@ -152,7 +312,13 @@ const App: React.FC = () => {
 
         {/* Main Content Flow */}
         <main className="flex-1 relative z-10 overflow-hidden flex flex-col">
-          {view === AppState.LANDING && <Landing onStart={handleStart} onViewMyFits={handleViewMyFits} />}
+          {view === AppState.LANDING && (
+            <Landing 
+              onStart={handleStart}
+              onViewMyFits={handleViewMyFits}
+              isAuthenticated={isAuthenticated === true}
+            />
+          )}
           
           {view === AppState.PREVIEW && (
             <ImageUpload 
@@ -196,13 +362,35 @@ const App: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-slide-up">
               <AlertTriangle className="text-red-500 mb-4" size={48} />
               <h2 className="text-2xl font-display font-bold text-white mb-2">OOF! ERROR.</h2>
-              <p className="text-gray-400 mb-6">{error}</p>
-              <button 
-                onClick={handleReset}
-                className="bg-white text-black font-bold px-8 py-3 rounded-full font-display hover:bg-gray-200 transition-colors"
-              >
-                TRY AGAIN
-              </button>
+              <p className="text-gray-400 mb-2 px-4">{error}</p>
+              {retryCount > 0 && (
+                <p className="text-gray-500 text-sm mb-4">Retry attempt {retryCount}/3</p>
+              )}
+              <div className="flex flex-col gap-3 w-full max-w-xs">
+                <button 
+                  onClick={handleRetry}
+                  disabled={isRetrying || !image}
+                  className="bg-drip-accent text-white font-bold px-8 py-3 rounded-full font-display hover:bg-drip-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isRetrying ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={20} />
+                      RETRYING...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={20} />
+                      RETRY
+                    </>
+                  )}
+                </button>
+                <button 
+                  onClick={handleReset}
+                  className="bg-drip-gray text-white font-bold px-8 py-3 rounded-full font-display hover:bg-drip-gray/80 transition-colors"
+                >
+                  START OVER
+                </button>
+              </div>
             </div>
           )}
 
