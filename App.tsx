@@ -44,6 +44,8 @@ const App: React.FC = () => {
          const chat = createStylistChat(image.base64, image.mimeType, result);
          setChatSession(chat);
        }
+       // Reset scroll position before switching to chat
+       window.scrollTo(0, 0);
        setView(AppState.CHAT);
     }
   };
@@ -56,7 +58,7 @@ const App: React.FC = () => {
     setImage(null);
     setResult(null);
     setChatSession(null);
-    setView(AppState.LANDING);
+    setView(AppState.PREVIEW);
     setError(null);
   };
 
@@ -65,13 +67,13 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-[100dvh] w-full bg-[#050505] text-white overflow-hidden flex justify-center items-center">
-      {/* App Container - Constrained to mobile width */}
-      <div className="w-full max-w-md h-full bg-drip-black relative shadow-2xl flex flex-col overflow-hidden border-x border-white/5">
+    <div className="h-[100dvh] w-full bg-[#050505] text-white overflow-hidden flex justify-center items-center sm:p-4">
+      {/* App Container - Mobile optimized: full width on mobile, constrained on larger screens */}
+      <div className="w-full sm:max-w-sm h-full bg-drip-black relative flex flex-col overflow-hidden sm:rounded-lg sm:shadow-2xl">
         
         {/* Background Elements (Inside the mobile frame) */}
-        <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-drip-accent/20 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[250px] h-[250px] bg-drip-lime/10 rounded-full blur-[80px] pointer-events-none"></div>
+        <div className="absolute top-[-20%] right-[-10%] w-[200px] h-[200px] sm:w-[300px] sm:h-[300px] bg-drip-accent/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[150px] h-[150px] sm:w-[250px] sm:h-[250px] bg-drip-lime/10 rounded-full blur-[80px] pointer-events-none"></div>
 
         {/* Main Content Flow */}
         <main className="flex-1 relative z-10 overflow-hidden flex flex-col">
@@ -110,18 +112,18 @@ const App: React.FC = () => {
               </button>
             </div>
           )}
-        </main>
 
-        {/* Full Screen Overlays (Outside Main Flow) */}
-        {view === AppState.CHAT && chatSession && image && (
-          <div className="absolute inset-0 z-50 bg-drip-black">
-             <ChatInterface 
-                chatSession={chatSession}
-                image={image}
-                onBack={handleBackFromChat}
-             />
-          </div>
-        )}
+          {/* Chat Interface - Relative to container */}
+          {view === AppState.CHAT && chatSession && image && (
+            <div className="absolute inset-0 bg-drip-black w-full h-full z-50 overflow-hidden">
+               <ChatInterface 
+                  chatSession={chatSession}
+                  image={image}
+                  onBack={handleBackFromChat}
+               />
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

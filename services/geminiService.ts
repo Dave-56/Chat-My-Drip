@@ -1,6 +1,11 @@
 import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
 import { AnalysisResult } from "../types";
 
+// Debug: Check if API key is loaded
+if (!process.env.API_KEY || process.env.API_KEY === 'undefined' || process.env.API_KEY.includes('your_api_key')) {
+  console.error('API_KEY is not properly loaded:', process.env.API_KEY);
+}
+
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const responseSchema: Schema = {
@@ -40,7 +45,7 @@ const responseSchema: Schema = {
 export const analyzeFit = async (base64Image: string, mimeType: string): Promise<AnalysisResult> => {
   try {
     const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash-exp",
       contents: {
         parts: [
           {
@@ -83,7 +88,7 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
 
 export const createStylistChat = (base64Image: string, mimeType: string, previousAnalysis: AnalysisResult): Chat => {
   return genAI.chats.create({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash-exp",
     history: [
       {
         role: "user",

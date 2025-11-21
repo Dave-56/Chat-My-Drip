@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Send, ArrowLeft, Sparkles } from 'lucide-react';
 import { ChatMessage, UploadedImage } from '../types';
 import { Chat } from "@google/genai";
@@ -19,23 +19,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // 1. Scroll to bottom when messages change
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // 2. Critical: Reset any parent scroll position on mount
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    if (document.body) document.body.scrollTop = 0;
-    if (document.documentElement) document.documentElement.scrollTop = 0;
-  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -79,16 +62,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
 
   return (
     // Flex Column Layout: Header (Fixed) + Body (Flex) + Footer (Fixed)
-    <div className="flex flex-col h-full w-full bg-drip-black">
+    <div className="flex flex-col h-full w-full bg-drip-black overflow-hidden relative">
       
-      {/* Header: Shrink-0 ensures it never collapses */}
-      <div className="shrink-0 h-[72px] bg-drip-black border-b border-drip-gray flex items-center gap-4 px-4 shadow-md z-20">
+      {/* Header: Fixed at top, always visible */}
+      <header className="shrink-0 h-[72px] bg-drip-dark border-b-2 border-white/50 flex items-center gap-3 px-4 shadow-lg z-50 safe-area-top" style={{ backgroundColor: '#1a1a1a' }}>
         <button 
           onClick={onBack} 
-          className="flex items-center gap-2 px-3 py-2 bg-drip-gray hover:bg-white hover:text-black rounded-full transition-colors text-white group"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-black border-2 border-black rounded-full active:bg-gray-200 transition-colors touch-manipulation min-w-[80px]"
+          aria-label="Back to results"
+          style={{ 
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            borderColor: '#000000',
+            boxShadow: '0 2px 8px rgba(255,255,255,0.5)'
+          }}
         >
-          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="font-display font-bold text-sm uppercase">Back</span>
+          <ArrowLeft size={20} strokeWidth={2.5} />
+          <span className="font-display font-bold text-xs uppercase">Back</span>
         </button>
         <div className="flex items-center gap-3 flex-1 justify-end">
           <div className="text-right">
@@ -102,10 +92,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
              <img src={image.previewUrl} className="w-full h-full object-cover" alt="Context" />
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Messages Area: Flex-1 fills available space, Overflow-Y handles scrolling */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-drip-black z-10">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-drip-black">
         {messages.map((msg) => (
           <div 
             key={msg.id} 
@@ -133,11 +123,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chatSession, image
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Footer: Shrink-0 ensures input is always visible */}
-      <div className="shrink-0 h-[88px] bg-drip-black border-t border-drip-gray p-4 z-20">
+      <div className="shrink-0 min-h-[88px] bg-drip-black border-t border-drip-gray p-4 z-20 safe-area-bottom">
         <div className="flex items-center gap-2 bg-drip-dark rounded-full border border-drip-gray px-4 py-2 focus-within:border-drip-accent transition-colors h-[52px]">
           <input
             type="text"

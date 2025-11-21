@@ -70,7 +70,7 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat }
   };
 
   return (
-    <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar">
+    <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
       {/* Header Image & Score Overlay */}
       <div className="relative w-full aspect-square shrink-0">
         <img 
@@ -95,7 +95,7 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat }
       </div>
 
       {/* Detailed Cards */}
-      <div className="px-6 -mt-4 relative z-10 space-y-4 pb-20">
+      <div className="px-6 -mt-4 relative z-10 space-y-4 pb-6">
         
         {/* Verdict Card */}
         <div className="bg-drip-dark p-5 rounded-xl border border-drip-gray shadow-lg">

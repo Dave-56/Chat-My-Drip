@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>ChatMyDrip | AI Stylist</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -46,12 +46,36 @@
         width: 100%;
         overflow: hidden; /* Prevents the page itself from scrolling */
         position: fixed; /* Forces the body to stay in place */
-        touch-action: none; /* Prevents some native gestures */
+        touch-action: pan-y; /* Allows vertical scrolling within containers */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        overscroll-behavior: none; /* Prevents pull-to-refresh and overscroll */
       }
       
       #root {
         height: 100%;
         width: 100%;
+        overflow: hidden;
+      }
+      
+      /* Safe area support for notched devices */
+      .safe-area-top {
+        padding-top: env(safe-area-inset-top);
+      }
+      
+      .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      
+      /* Prevent text selection on mobile for better UX */
+      * {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+      
+      /* Better touch targets for mobile */
+      button, a {
+        touch-action: manipulation;
+        min-height: 44px; /* iOS recommended touch target */
       }
 
       h1, h2, h3, .font-display {
@@ -62,6 +86,20 @@
       ::-webkit-scrollbar {
         width: 0px;
         background: transparent;
+      }
+      
+      .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+      
+      .no-scrollbar::-webkit-scrollbar {
+        display: none; /* Chrome, Safari and Opera */
+      }
+      
+      /* Prevent overscroll bounce on iOS */
+      .overscroll-contain {
+        overscroll-behavior: contain;
       }
     </style>
   <script type="importmap">
