@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle, Bookmark, BookmarkCheck, Home } from 'lucide-react';
-import { AnalysisResult, UploadedImage } from '../types';
-import { saveOutfit, isOutfitSaved } from '../utils/outfitStorage';
+import React from 'react';
+import { ArrowLeft, Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, Twitter, MessageCircle } from 'lucide-react';
+import { SavedOutfit, UploadedImage, AnalysisResult } from '../types';
+import { getShareableLink } from '../utils/outfitStorage';
 
-interface ResultsProps {
+interface SavedOutfitViewProps {
+  outfit: SavedOutfit;
   image: UploadedImage;
   data: AnalysisResult;
-  onReset: () => void;
+  onBack: () => void;
   onChat: () => void;
-  onGoHome?: () => void; // Optional function to go to landing page
 }
 
 // Helper to convert base64 data URL to File object
@@ -24,47 +24,22 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
   return new File([u8arr], filename, { type: mime });
 };
 
-export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
-  const [isSaved, setIsSaved] = useState(isOutfitSaved(image.previewUrl));
-  const [isSaving, setIsSaving] = useState(false);
+export const SavedOutfitView: React.FC<SavedOutfitViewProps> = ({ outfit, image, data, onBack, onChat }) => {
   const scoreColor = data.score >= 8 ? 'text-drip-lime' : data.score >= 5 ? 'text-drip-accent' : 'text-red-500';
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
 
-  const handleSaveOutfit = async () => {
-    try {
-      setIsSaving(true);
-      await saveOutfit(image, data);
-      setIsSaved(true);
-    } catch (error: any) {
-      console.error('Error saving outfit:', error);
-      alert(error.message || 'Failed to save outfit. Storage might be full.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+  const shareLink = getShareableLink(outfit.id);
   const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
-  // Use production URL for sharing
-  const getProductionUrl = () => {
-    const prodUrl = 'https://chatmydrip.vercel.app';
-    if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('chatmydrip')) {
-      return window.location.origin;
-    }
-    return prodUrl;
-  };
-  const shareUrl = getProductionUrl();
 
   const handleNativeShare = async () => {
-    // Try sharing image + text
     const file = dataURLtoFile(image.previewUrl, 'chatmydrip-result.png');
     
-    // Check if the browser supports sharing files
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
           title: 'ChatMyDrip Result',
-          text: shareText,
+          text: `${shareText}\n\nView: ${shareLink}`,
         });
         return;
       } catch (error) {
@@ -72,30 +47,48 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
       }
     }
     
-    // Fallback to text share if file share fails or isn't supported
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'ChatMyDrip Result',
-          text: shareText,
-          url: shareUrl,
+          text: `${shareText}\n\nView: ${shareLink}`,
+          url: shareLink,
         });
       } catch (error) {
         console.log('Error sharing text', error);
       }
     } else {
-      alert("Screenshot this to share!");
+      // Fallback: copy link to clipboard
+      navigator.clipboard.writeText(shareLink);
+      alert('Link copied to clipboard!');
     }
   };
 
   const handleTwitterShare = () => {
     const text = encodeURIComponent(`${shareText}\n\nCheck my fit:`);
-    const url = encodeURIComponent(shareUrl);
+    const url = encodeURIComponent(shareLink);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    alert('Link copied to clipboard!');
   };
 
   return (
     <div className="flex flex-col h-full animate-slide-up overflow-y-auto no-scrollbar overscroll-contain">
+      {/* Header */}
+      <div className="shrink-0 h-[72px] bg-drip-dark border-b-2 border-white/50 flex items-center gap-3 px-4">
+        <button 
+          onClick={onBack} 
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-black border-2 border-black rounded-full active:bg-gray-200 transition-colors"
+        >
+          <ArrowLeft size={20} strokeWidth={2.5} />
+          <span className="font-display font-bold text-xs uppercase">Back</span>
+        </button>
+        <h2 className="font-display font-bold text-white text-lg">SAVED FIT</h2>
+      </div>
+
       {/* Header Image & Score Overlay */}
       <div className="relative w-full aspect-square shrink-0">
         <img 
@@ -138,30 +131,12 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
                 <MessageCircle size={20} />
              </div>
              <div className="text-left">
-                <p className="text-sm font-normal opacity-90">Have questions?</p>
+                <p className="text-sm font-normal opacity-90">Chat about this fit?</p>
                 <p className="text-lg leading-none">ASK DRIP</p>
              </div>
           </div>
           <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
         </button>
-
-        {/* Save Outfit Button */}
-        {!isSaved && (
-          <button
-            onClick={handleSaveOutfit}
-            disabled={isSaving}
-            className="w-full bg-drip-dark text-white p-4 rounded-xl font-bold font-display flex items-center justify-center gap-2 border border-drip-gray hover:bg-drip-gray transition-colors disabled:opacity-50"
-          >
-            <Bookmark size={20} />
-            {isSaving ? 'SAVING...' : 'SAVE OUTFIT'}
-          </button>
-        )}
-        {isSaved && (
-          <div className="w-full bg-drip-lime/10 text-drip-lime p-4 rounded-xl font-bold font-display flex items-center justify-center gap-2 border border-drip-lime/30">
-            <BookmarkCheck size={20} />
-            SAVED
-          </div>
-        )}
 
         {/* Hits */}
         <div className="bg-drip-dark p-5 rounded-xl border border-drip-gray">
@@ -209,7 +184,16 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
 
         {/* Actions */}
         <div className="pt-4 space-y-3">
-          {/* Primary Share Button (Native - Instagram/Generic) */}
+          {/* Share Link Button */}
+          <button 
+            onClick={handleCopyLink}
+            className="w-full bg-drip-accent text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20"
+          >
+            <Share2 size={24} />
+            COPY SHARE LINK
+          </button>
+
+          {/* Share Buttons */}
           <button 
             onClick={handleNativeShare}
             className="w-full bg-white text-black font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-200 transition-colors text-lg shadow-lg shadow-white/10"
@@ -218,39 +202,26 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
             SHARE RESULT
           </button>
 
-          {/* Secondary Row */}
-          <div className="flex gap-3">
-            <button 
-              onClick={handleTwitterShare}
-              className="flex-1 bg-[#1DA1F2] text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity"
-            >
-              <Twitter size={20} fill="currentColor" />
-              TWEET
-            </button>
-            <button 
-              onClick={onReset}
-              className="flex-1 bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors"
-            >
-              <RefreshCw size={20} />
-              NEXT FIT
-            </button>
-          </div>
-          
-          {/* Home Button */}
-          {onGoHome && (
-            <button 
-              onClick={onGoHome}
-              className="w-full bg-drip-dark text-white font-bold py-3 rounded-full flex items-center justify-center gap-2 font-display hover:bg-drip-gray transition-colors border border-drip-gray"
-            >
-              <Home size={18} />
-              BACK TO HOME
-            </button>
-          )}
-          <p className="text-center text-xs text-gray-500 mt-2">
-            Pro tip: Use "Share Result" for Instagram Stories
-          </p>
+          {/* Twitter Share */}
+          <button 
+            onClick={handleTwitterShare}
+            className="w-full bg-[#1DA1F2] text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:opacity-90 transition-opacity"
+          >
+            <Twitter size={20} fill="currentColor" />
+            TWEET
+          </button>
         </div>
+
+        {/* Saved Date */}
+        <p className="text-center text-xs text-gray-500 mt-2">
+          Saved on {new Date(outfit.savedAt).toLocaleDateString('en-US', { 
+            month: 'long', 
+            day: 'numeric', 
+            year: 'numeric' 
+          })}
+        </p>
       </div>
     </div>
   );
 };
+

@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Landing } from './components/Landing';
 import { ImageUpload } from './components/ImageUpload';
 import { Loading } from './components/Loading';
 import { Results } from './components/Results';
 import { ChatInterface } from './components/ChatInterface';
+import { MyFits } from './components/MyFits';
+import { SavedOutfitView } from './components/SavedOutfitView';
 import { analyzeFit, createStylistChat } from './services/geminiService';
-import { AppState, UploadedImage, AnalysisResult } from './types';
+import { AppState, UploadedImage, AnalysisResult, SavedOutfit } from './types';
+import { getSavedOutfit } from './utils/outfitStorage';
 import { AlertTriangle } from 'lucide-react';
 import { Chat } from "@google/genai";
 
@@ -15,6 +18,8 @@ const App: React.FC = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatSession, setChatSession] = useState<Chat | null>(null);
+  const [savedOutfit, setSavedOutfit] = useState<SavedOutfit | null>(null);
+  const [previousView, setPreviousView] = useState<AppState | null>(null);
 
   const handleStart = () => {
     setView(AppState.PREVIEW);
@@ -39,11 +44,11 @@ const App: React.FC = () => {
 
   const handleOpenChat = () => {
     if (image && result) {
-       // Only create a new session if one doesn't exist for this current analysis
-       if (!chatSession) {
-         const chat = createStylistChat(image.base64, image.mimeType, result);
-         setChatSession(chat);
-       }
+       // Store current view before going to chat
+       setPreviousView(view);
+       // Always create a new session for the current analysis
+       const chat = createStylistChat(image.base64, image.mimeType, result);
+       setChatSession(chat);
        // Reset scroll position before switching to chat
        window.scrollTo(0, 0);
        setView(AppState.CHAT);
@@ -51,7 +56,18 @@ const App: React.FC = () => {
   };
 
   const handleBackFromChat = () => {
-     setView(AppState.RESULT);
+     // Return to previous view (either RESULT or SAVED_OUTFIT)
+     if (previousView) {
+       setView(previousView);
+       setPreviousView(null);
+     } else {
+       // Fallback
+       if (savedOutfit) {
+         setView(AppState.SAVED_OUTFIT);
+       } else {
+         setView(AppState.RESULT);
+       }
+     }
   };
 
   const handleReset = () => {
@@ -62,8 +78,52 @@ const App: React.FC = () => {
     setError(null);
   };
 
+  const handleGoHome = () => {
+    setImage(null);
+    setResult(null);
+    setChatSession(null);
+    setSavedOutfit(null);
+    setView(AppState.LANDING);
+    setError(null);
+  };
+
   const handleCancelUpload = () => {
     setView(AppState.LANDING);
+  };
+
+  // Handle shareable links (hash-based routing)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/fit/')) {
+      const outfitId = hash.replace('#/fit/', '');
+      const outfit = getSavedOutfit(outfitId);
+      if (outfit) {
+        setSavedOutfit(outfit);
+        setImage(outfit.image);
+        setResult(outfit.analysis);
+        setView(AppState.SAVED_OUTFIT);
+      }
+      // Clean up hash after loading
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleViewMyFits = () => {
+    setSavedOutfit(null); // Clear saved outfit when going to My Fits
+    setView(AppState.MY_FITS);
+  };
+
+  const handleViewSavedOutfit = (outfitId: string) => {
+    const outfit = getSavedOutfit(outfitId);
+    if (outfit) {
+      setSavedOutfit(outfit);
+      setImage(outfit.image);
+      setResult(outfit.analysis);
+      setView(AppState.SAVED_OUTFIT);
+    } else {
+      // Outfit not found, go to landing
+      setView(AppState.LANDING);
+    }
   };
 
   return (
@@ -77,7 +137,7 @@ const App: React.FC = () => {
 
         {/* Main Content Flow */}
         <main className="flex-1 relative z-10 overflow-hidden flex flex-col">
-          {view === AppState.LANDING && <Landing onStart={handleStart} />}
+          {view === AppState.LANDING && <Landing onStart={handleStart} onViewMyFits={handleViewMyFits} />}
           
           {view === AppState.PREVIEW && (
             <ImageUpload 
@@ -95,6 +155,24 @@ const App: React.FC = () => {
               image={image} 
               data={result} 
               onReset={handleReset} 
+              onChat={handleOpenChat}
+              onGoHome={handleGoHome}
+            />
+          )}
+
+          {view === AppState.MY_FITS && (
+            <MyFits 
+              onBack={() => setView(AppState.LANDING)}
+              onViewOutfit={handleViewSavedOutfit}
+            />
+          )}
+
+          {view === AppState.SAVED_OUTFIT && savedOutfit && image && result && (
+            <SavedOutfitView
+              outfit={savedOutfit}
+              image={image}
+              data={result}
+              onBack={() => setView(AppState.MY_FITS)}
               onChat={handleOpenChat}
             />
           )}
