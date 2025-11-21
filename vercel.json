@@ -5,6 +5,10 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/chatmydrip/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
       "source": "/chatmydrip/:path*",
       "destination": "/index.html"
     },
