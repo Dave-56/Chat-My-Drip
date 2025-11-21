@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, MessageCircle, Home } from 'lucide-react';
 import { AnalysisResult, UploadedImage } from '../types';
-import { getShareableLink, getSavedOutfits } from '../utils/outfitStorage';
+import { getShareableLink, getSavedOutfits } from '../utils/supabaseStorage';
 import { Toast } from './Toast';
 import { ShareMenu } from './ShareMenu';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
@@ -30,6 +30,23 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+
+  // Load shareable link on mount
+  React.useEffect(() => {
+    const loadShareLink = async () => {
+      const outfits = await getSavedOutfits();
+      if (outfits.length > 0) {
+        // Find the most recent outfit that matches this analysis
+        const recentOutfit = outfits.find(o => 
+          o.analysis.score === data.score && 
+          o.analysis.vibe === data.vibe
+        ) || outfits[0]; // Fallback to most recent
+        setShareLink(getShareableLink(recentOutfit.id));
+      }
+    };
+    loadShareLink();
+  }, [data]);
 
   // Swipe left to go back/home
   const { ref: swipeRef, swipeProgress, isSwiping } = useSwipeGesture({
@@ -48,22 +65,6 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
   const scoreBg = data.score >= 8 ? 'bg-drip-lime/10' : data.score >= 5 ? 'bg-drip-accent/10' : 'bg-red-500/10';
 
   const shareText = `I got a ${data.score}/10 on ChatMyDrip. "${data.verdict}" 🤖👠`;
-  
-  // Get shareable link from most recently saved outfit
-  const getShareableLinkForCurrent = (): string | null => {
-    const outfits = getSavedOutfits();
-    if (outfits.length > 0) {
-      // Find the most recent outfit that matches this analysis
-      const recentOutfit = outfits.find(o => 
-        o.analysis.score === data.score && 
-        o.analysis.vibe === data.vibe
-      ) || outfits[0]; // Fallback to most recent
-      return getShareableLink(recentOutfit.id);
-    }
-    return null;
-  };
-
-  const shareLink = getShareableLinkForCurrent();
 
   const handleCopyLink = async () => {
     if (!shareLink) {

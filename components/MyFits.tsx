@@ -3,7 +3,7 @@ import { ArrowLeft, BarChart3, Trash2 } from 'lucide-react';
 import { 
   getSavedOutfits, 
   deleteOutfit
-} from '../utils/outfitStorage';
+} from '../utils/supabaseStorage';
 import { SavedOutfit } from '../types';
 import { StatsDashboard } from './StatsDashboard';
 import { SwipeableOutfitCard } from './SwipeableOutfitCard';
@@ -18,15 +18,36 @@ type ViewMode = 'fits' | 'stats';
 
 export const MyFits: React.FC<MyFitsProps> = ({ onBack, onViewOutfit }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('fits');
-  const [outfits, setOutfits] = useState<SavedOutfit[]>(getSavedOutfits());
+  const [outfits, setOutfits] = useState<SavedOutfit[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const refreshData = () => {
-    setOutfits(getSavedOutfits());
+  React.useEffect(() => {
+    loadOutfits();
+  }, []);
+
+  const loadOutfits = async () => {
+    setLoading(true);
+    try {
+      const loadedOutfits = await getSavedOutfits();
+      setOutfits(loadedOutfits);
+    } catch (error) {
+      console.error('Error loading outfits:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteOutfit(id);
-    refreshData();
+  const refreshData = async () => {
+    await loadOutfits();
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteOutfit(id);
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting outfit:', error);
+    }
   };
 
   // Pinterest-style masonry layout helper
@@ -96,6 +117,11 @@ export const MyFits: React.FC<MyFitsProps> = ({ onBack, onViewOutfit }) => {
       {/* Fits View - Only show in fits mode */}
       {viewMode === 'fits' && (
         <>
+      {/* Loading State */}
+      {loading ? (
+        <MyFitsSkeleton />
+      ) : (
+        <>
       {/* Empty State */}
       {outfits.length === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -126,6 +152,8 @@ export const MyFits: React.FC<MyFitsProps> = ({ onBack, onViewOutfit }) => {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
         </>
       )}

@@ -9,7 +9,8 @@ import { SavedOutfitView } from './components/SavedOutfitView';
 import { analyzeFit as analyzeFitGemini, createStylistChat as createStylistChatGemini } from './services/geminiService';
 import { analyzeFit as analyzeFitOpenAI, createStylistChat as createStylistChatOpenAI } from './services/openaiService';
 import { AppState, UploadedImage, AnalysisResult, SavedOutfit, ChatSession } from './types';
-import { getSavedOutfit, saveOutfit } from './utils/outfitStorage';
+import { getSavedOutfit, saveOutfit, getSavedOutfits } from './utils/supabaseStorage';
+import { supabase } from './utils/supabaseClient';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { isNetworkError, RetryableError } from './utils/errorRecovery';
 
@@ -53,6 +54,99 @@ const App: React.FC = () => {
   const [previousView, setPreviousView] = useState<AppState | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = checking
+
+  // Check auth status on mount and load most recent outfit if available
+  useEffect(() => {
+    const checkAuthAndLoadRecent = async () => {
+      // Skip if there's a hash (shareable link will handle it)
+      if (window.location.hash.startsWith('#/fit/')) {
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const authenticated = !!session;
+      setIsAuthenticated(authenticated);
+      
+      // If authenticated and on landing, check for recent outfit
+      if (authenticated && view === AppState.LANDING) {
+        try {
+          const outfits = await getSavedOutfits();
+          if (outfits.length > 0) {
+            // Load the most recent outfit (first in array, sorted by saved_at desc)
+            const mostRecent = outfits[0];
+            setSavedOutfit(mostRecent);
+            setImage(mostRecent.image);
+            setResult(mostRecent.analysis);
+            setView(AppState.RESULT);
+          } else {
+            // No outfits, go to upload screen
+            setView(AppState.PREVIEW);
+          }
+        } catch (error) {
+          console.error('Error loading recent outfit:', error);
+          // On error, default to upload screen
+          setView(AppState.PREVIEW);
+        }
+      }
+    };
+
+    checkAuthAndLoadRecent();
+
+    // Listen for auth changes (e.g., after OAuth redirect)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const authenticated = !!session;
+      setIsAuthenticated(authenticated);
+      // If user just signed in, check for recent outfit
+      if (authenticated) {
+        try {
+          const outfits = await getSavedOutfits();
+          if (outfits.length > 0) {
+            // Load the most recent outfit
+            const mostRecent = outfits[0];
+            setSavedOutfit(mostRecent);
+            setImage(mostRecent.image);
+            setResult(mostRecent.analysis);
+            setView(AppState.RESULT);
+          } else {
+            // No outfits, go to upload screen
+            setView(AppState.PREVIEW);
+          }
+        } catch (error) {
+          console.error('Error loading recent outfit:', error);
+          // On error, default to upload screen
+          setView(AppState.PREVIEW);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAuthSuccess = async () => {
+    setIsAuthenticated(true);
+    // After sign-in, check for recent outfit or go to upload screen
+    try {
+      const outfits = await getSavedOutfits();
+      if (outfits.length > 0) {
+        // Load the most recent outfit
+        const mostRecent = outfits[0];
+        setSavedOutfit(mostRecent);
+        setImage(mostRecent.image);
+        setResult(mostRecent.analysis);
+        setView(AppState.RESULT);
+      } else {
+        // No outfits, go to upload screen
+        setView(AppState.PREVIEW);
+      }
+    } catch (error) {
+      console.error('Error loading recent outfit:', error);
+      // On error, default to upload screen
+      setView(AppState.PREVIEW);
+    }
+  };
 
   const handleStart = () => {
     setView(AppState.PREVIEW);
@@ -79,7 +173,11 @@ const App: React.FC = () => {
       // Auto-save outfit when results are ready
       let savedOutfitId: string | null = null;
       try {
-        const savedOutfit = await saveOutfit(selectedImage, analysis);
+        // Auto-generate name from analysis
+        const outfitName = analysis.score >= 8 
+          ? `Fire Fit - ${analysis.vibe}`
+          : `${analysis.vibe} Fit`;
+        const savedOutfit = await saveOutfit(selectedImage, analysis, outfitName);
         savedOutfitId = savedOutfit.id;
       } catch (saveError) {
         // Log but don't block UI if save fails
@@ -167,19 +265,22 @@ const App: React.FC = () => {
 
   // Handle shareable links (hash-based routing)
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#/fit/')) {
-      const outfitId = hash.replace('#/fit/', '');
-      const outfit = getSavedOutfit(outfitId);
-      if (outfit) {
-        setSavedOutfit(outfit);
-        setImage(outfit.image);
-        setResult(outfit.analysis);
-        setView(AppState.SAVED_OUTFIT);
+    const loadOutfit = async () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/fit/')) {
+        const outfitId = hash.replace('#/fit/', '');
+        const outfit = await getSavedOutfit(outfitId);
+        if (outfit) {
+          setSavedOutfit(outfit);
+          setImage(outfit.image);
+          setResult(outfit.analysis);
+          setView(AppState.SAVED_OUTFIT);
+        }
+        // Clean up hash after loading
+        window.history.replaceState(null, '', window.location.pathname);
       }
-      // Clean up hash after loading
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    };
+    loadOutfit();
   }, []);
 
   const handleViewMyFits = () => {
@@ -187,8 +288,8 @@ const App: React.FC = () => {
     setView(AppState.MY_FITS);
   };
 
-  const handleViewSavedOutfit = (outfitId: string) => {
-    const outfit = getSavedOutfit(outfitId);
+  const handleViewSavedOutfit = async (outfitId: string) => {
+    const outfit = await getSavedOutfit(outfitId);
     if (outfit) {
       setSavedOutfit(outfit);
       setImage(outfit.image);
@@ -211,7 +312,13 @@ const App: React.FC = () => {
 
         {/* Main Content Flow */}
         <main className="flex-1 relative z-10 overflow-hidden flex flex-col">
-          {view === AppState.LANDING && <Landing onStart={handleStart} onViewMyFits={handleViewMyFits} />}
+          {view === AppState.LANDING && (
+            <Landing 
+              onStart={handleStart}
+              onViewMyFits={handleViewMyFits}
+              isAuthenticated={isAuthenticated === true}
+            />
+          )}
           
           {view === AppState.PREVIEW && (
             <ImageUpload 

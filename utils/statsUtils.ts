@@ -1,5 +1,5 @@
 import { SavedOutfit, AnalysisResult } from '../types';
-import { getSavedOutfits } from './outfitStorage';
+import { getSavedOutfits } from './supabaseStorage';
 
 export interface StyleStats {
   totalOutfits: number;
@@ -19,8 +19,8 @@ export interface StyleStats {
 /**
  * Calculate stats from saved outfits
  */
-export const calculateStats = (): StyleStats => {
-  const outfits = getSavedOutfits();
+export const calculateStats = async (): Promise<StyleStats> => {
+  const outfits = await getSavedOutfits();
   
   if (outfits.length === 0) {
     return {
