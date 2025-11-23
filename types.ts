@@ -9,6 +9,7 @@ export interface AnalysisResult {
 
 export enum AppState {
   LANDING = 'LANDING',
+  ONBOARDING = 'ONBOARDING',
   PREVIEW = 'PREVIEW',
   ANALYZING = 'ANALYZING',
   RESULT = 'RESULT',
@@ -17,6 +18,8 @@ export enum AppState {
   MY_FITS = 'MY_FITS',
   SAVED_OUTFIT = 'SAVED_OUTFIT',
 }
+
+export type ClimateContext = 'hot' | 'warm' | 'mild' | 'cool' | 'cold';
 
 export interface UploadedImage {
   base64: string; // Raw base64 data without prefix for API

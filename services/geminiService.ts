@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
-import { AnalysisResult, ChatSession } from "../types";
+import { AnalysisResult, ChatSession, ClimateContext } from "../types";
 import { withRetry, RetryableError, isNetworkError } from "../utils/errorRecovery";
 
 // Debug: Check if API key is loaded
@@ -33,7 +33,7 @@ const responseSchema: Schema = {
     suggestions: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List 2 specific items that would complete or fix this look.",
+      description: "List 2 specific items that would complete or fix this look. CRITICAL: Before suggesting, carefully identify ALL visible accessories and jewelry in the image (necklaces, pendants, bracelets, rings, earrings, bags, hats, etc.). DO NOT suggest items that are already present. Only suggest items that would genuinely ADD to or FIX the look.",
     },
     verdict: {
       type: Type.STRING,
@@ -43,7 +43,7 @@ const responseSchema: Schema = {
   required: ["score", "vibe", "hits", "misses", "suggestions", "verdict"],
 };
 
-export const analyzeFit = async (base64Image: string, mimeType: string): Promise<AnalysisResult> => {
+export const analyzeFit = async (base64Image: string, mimeType: string, climateContext?: ClimateContext): Promise<AnalysisResult> => {
   return withRetry(
     async () => {
       try {
@@ -60,6 +60,12 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
               {
                 text: `You are a BRUTAL, no-nonsense Gen Z fashion stylist with deep knowledge of fashion, brands, and style. This is GAMIFIED - users need to EARN their scores. Be harsh but fair. Most fits are mid, and that's okay. Only the truly exceptional deserve high scores.
                 
+                ${climateContext ? `CLIMATE CONTEXT: The user is in a ${climateContext} climate. CRITICAL: All suggestions must be appropriate for this climate. 
+                - If climate is hot/warm: DO NOT suggest boots, heavy jackets, sweaters, or winter gear. Suggest lightweight, breathable options.
+                - If climate is cold: DO NOT suggest sandals, shorts, or summer-only items. Suggest appropriate warm clothing.
+                - If climate is mild/cool: Suggest seasonally appropriate items.
+                Factor climate into your scoring - an outfit that's inappropriate for the climate should be penalized.` : ''}
+                
                 SCORING PHILOSOPHY (THIS IS CRITICAL):
                 - 1-3: Actually bad. Clashing colors, poor fit, no thought put in.
                 - 4-5: Average/mid. It's fine, nothing special. Most casual fits land here.
@@ -73,6 +79,7 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
                 - Exact fit types: straight-leg, slim-fit, baggy, relaxed, tapered, wide-leg, etc.
                 - Materials and textures: linen, denim, silk, cotton, leather, etc.
                 - Style categories: streetwear, minimalism, Y2K, quiet luxury, etc.
+                - ALL visible accessories and jewelry: necklaces, pendants, bracelets, rings, earrings, bags, purses, hats, headwear, watches, belts, etc.
                 
                 Rules:
                 1. DO NOT comment on the person's body, weight, or physical features. ONLY comment on clothes, fit, color, and styling.
@@ -82,7 +89,9 @@ export const analyzeFit = async (base64Image: string, mimeType: string): Promise
                 5. Understand fit terminology: straight-leg ≠ baggy, slim-fit ≠ tight, relaxed ≠ oversized. Be precise.
                 6. BE BRUTAL BUT CONSTRUCTIVE. If it's mid, call it mid. If it's giving NPC, say it. But always explain how to level up.
                 7. Don't inflate scores. A basic hoodie and sweatpants combo is probably a 4-5, not a 7. Make users WORK for those high scores.
-                8. Return the result as JSON matching the schema.
+                8. BEFORE SUGGESTING ITEMS: You MUST first identify every visible accessory, piece of jewelry, bag, hat, and footwear detail in the image. DO NOT suggest items that are already present. For example, if you see a pendant/necklace, do NOT suggest adding a pendant. If you see earrings, do NOT suggest earrings. Only suggest items that would genuinely ADD to or IMPROVE the look.
+                9. ${climateContext ? 'CLIMATE AWARENESS: All suggestions must be climate-appropriate. If climate context is provided, factor it heavily into your suggestions and scoring.' : ''}
+                10. Return the result as JSON matching the schema.
                 `,
               },
             ],

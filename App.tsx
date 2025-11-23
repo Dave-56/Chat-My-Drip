@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Landing } from './components/Landing';
+import { Onboarding } from './components/Onboarding';
 import { ImageUpload } from './components/ImageUpload';
 import { Loading } from './components/Loading';
 import { Results } from './components/Results';
@@ -11,6 +12,7 @@ import { analyzeFit as analyzeFitOpenAI, createStylistChat as createStylistChatO
 import { AppState, UploadedImage, AnalysisResult, SavedOutfit, ChatSession } from './types';
 import { getSavedOutfit, saveOutfit, getSavedOutfits } from './utils/supabaseStorage';
 import { supabase } from './utils/supabaseClient';
+import { getUserLocation, getClimateContext } from './utils/climateUtils';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { isNetworkError, RetryableError } from './utils/errorRecovery';
 
@@ -69,9 +71,14 @@ const App: React.FC = () => {
       const authenticated = !!session;
       setIsAuthenticated(authenticated);
       
-      // If authenticated and on landing, go directly to upload screen
       if (authenticated && view === AppState.LANDING) {
-        setView(AppState.PREVIEW);
+        // Check if user has location set
+        const location = await getUserLocation();
+        if (!location) {
+          setView(AppState.ONBOARDING);
+        } else {
+          setView(AppState.PREVIEW);
+        }
       }
     };
 
@@ -85,9 +92,14 @@ const App: React.FC = () => {
       setIsAuthenticated(authenticated);
       
       if (authenticated) {
-        // User signed in - go to upload screen if on landing
+        // Check if user has location set
+        const location = await getUserLocation();
         if (view === AppState.LANDING) {
-          setView(AppState.PREVIEW);
+          if (!location) {
+            setView(AppState.ONBOARDING);
+          } else {
+            setView(AppState.PREVIEW);
+          }
         }
       } else {
         // User signed out - clear state and go to landing
@@ -104,7 +116,16 @@ const App: React.FC = () => {
 
   const handleAuthSuccess = async () => {
     setIsAuthenticated(true);
-    // After sign-in, go directly to upload screen
+    // After sign-in, check if location is set
+    const location = await getUserLocation();
+    if (!location) {
+      setView(AppState.ONBOARDING);
+    } else {
+      setView(AppState.PREVIEW);
+    }
+  };
+
+  const handleOnboardingComplete = () => {
     setView(AppState.PREVIEW);
   };
 
@@ -125,7 +146,11 @@ const App: React.FC = () => {
     }
 
     try {
-      const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType);
+      // Get user location and derive climate context
+      const location = await getUserLocation();
+      const climateContext = location ? getClimateContext(location) : undefined;
+      
+      const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType, climateContext);
       
       // Set result and view FIRST - don't wait for save
       setResult(analysis);
@@ -268,6 +293,10 @@ const App: React.FC = () => {
               onViewMyFits={handleViewMyFits}
               isAuthenticated={isAuthenticated === true}
             />
+          )}
+          
+          {view === AppState.ONBOARDING && (
+            <Onboarding onComplete={handleOnboardingComplete} />
           )}
           
           {view === AppState.PREVIEW && (
