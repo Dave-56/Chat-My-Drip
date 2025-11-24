@@ -21,6 +21,17 @@ export enum AppState {
 
 export type ClimateContext = 'hot' | 'warm' | 'mild' | 'cool' | 'cold';
 
+export type DestinationContext = 
+  | 'just-checking'
+  | 'work-office'
+  | 'date-night-out'
+  | 'casual-hangout'
+  | 'formal-event'
+  | 'beach-outdoor'
+  | 'gym-workout'
+  | 'travel'
+  | null;
+
 export interface UploadedImage {
   base64: string; // Raw base64 data without prefix for API
   previewUrl: string; // With prefix for <img> src

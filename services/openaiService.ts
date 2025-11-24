@@ -1,6 +1,20 @@
 import OpenAI from "openai";
-import { AnalysisResult, ChatSession, ClimateContext } from "../types";
+import { AnalysisResult, ChatSession, ClimateContext, DestinationContext } from "../types";
 import { withRetry, RetryableError, isNetworkError } from "../utils/errorRecovery";
+
+const getDestinationText = (destination: DestinationContext): string => {
+  const map: Record<NonNullable<DestinationContext>, string> = {
+    'just-checking': 'just checking their outfit',
+    'work-office': 'going to work or the office',
+    'date-night-out': 'going on a date or night out',
+    'casual-hangout': 'going to a casual hangout',
+    'formal-event': 'attending a formal event',
+    'beach-outdoor': 'going to the beach or outdoor activity',
+    'gym-workout': 'going to the gym or working out',
+    'travel': 'traveling',
+  };
+  return destination ? map[destination] : '';
+};
 
 // Debug: Check if API key is loaded
 if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'undefined' || process.env.OPENAI_API_KEY.includes('your_api_key')) {
@@ -51,7 +65,7 @@ export class OpenAIChat implements ChatSession {
   }
 }
 
-export const analyzeFit = async (base64Image: string, mimeType: string, climateContext?: ClimateContext): Promise<AnalysisResult> => {
+export const analyzeFit = async (base64Image: string, mimeType: string, climateContext?: ClimateContext, destinationContext?: DestinationContext): Promise<AnalysisResult> => {
   return withRetry(
     async () => {
       try {
@@ -79,6 +93,17 @@ export const analyzeFit = async (base64Image: string, mimeType: string, climateC
                 - If climate is cold: DO NOT suggest sandals, shorts, or summer-only items. Suggest appropriate warm clothing.
                 - If climate is mild/cool: Suggest seasonally appropriate items.
                 Factor climate into your scoring - an outfit that's inappropriate for the climate should be penalized.` : ''}
+                
+                ${destinationContext ? `DESTINATION CONTEXT: The user is ${getDestinationText(destinationContext)}. CRITICAL: Factor this into your analysis and suggestions.
+                - If going to work/office: Consider professional appropriateness. Suggest items that elevate the look for a professional setting.
+                - If going on a date/night out: Consider romantic/evening-appropriate styling. Suggest items that add sophistication or edge.
+                - If casual hangout: Keep suggestions casual and comfortable but still stylish.
+                - If formal event: Consider formal dress codes. Suggest items that elevate formality.
+                - If beach/outdoor: Consider practical outdoor wear. Suggest items appropriate for outdoor activities.
+                - If gym/workout: Consider athletic appropriateness. Only suggest if the outfit is actually workout-appropriate.
+                - If traveling: Consider comfort and versatility. Suggest items that work for travel.
+                - If just checking: Provide general styling feedback without occasion-specific constraints.
+                Factor destination appropriateness into your scoring - an outfit that's inappropriate for the destination should be penalized.` : ''}
                 
                 SCORING PHILOSOPHY (THIS IS CRITICAL):
                 - 1-3: Actually bad. Clashing colors, poor fit, no thought put in.

@@ -9,7 +9,7 @@ import { MyFits } from './components/MyFits';
 import { SavedOutfitView } from './components/SavedOutfitView';
 import { analyzeFit as analyzeFitGemini, createStylistChat as createStylistChatGemini } from './services/geminiService';
 import { analyzeFit as analyzeFitOpenAI, createStylistChat as createStylistChatOpenAI } from './services/openaiService';
-import { AppState, UploadedImage, AnalysisResult, SavedOutfit, ChatSession } from './types';
+import { AppState, UploadedImage, AnalysisResult, SavedOutfit, ChatSession, DestinationContext, ClimateContext } from './types';
 import { getSavedOutfit, saveOutfit, getSavedOutfits } from './utils/supabaseStorage';
 import { supabase } from './utils/supabaseClient';
 import { getUserLocation, getClimateContext } from './utils/climateUtils';
@@ -57,6 +57,8 @@ const App: React.FC = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = checking
+  const [destination, setDestination] = useState<DestinationContext>(null);
+  const [climateContext, setClimateContext] = useState<ClimateContext | undefined>(undefined);
 
 
   // Check auth status on mount
@@ -114,6 +116,19 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Debug: Log when RESULT view should show but doesn't
+  useEffect(() => {
+    if (view === AppState.RESULT && (!image || !result)) {
+      console.error('[VIEW DEBUG] RESULT view requested but missing data:', {
+        view,
+        hasImage: !!image,
+        hasResult: !!result,
+        imageType: image ? typeof image : 'null',
+        resultType: result ? typeof result : 'null'
+      });
+    }
+  }, [view, image, result]);
+
   const handleAuthSuccess = async () => {
     setIsAuthenticated(true);
     // After sign-in, check if location is set
@@ -134,9 +149,10 @@ const App: React.FC = () => {
     setError(null);
   };
 
-  const handleImageSelected = async (selectedImage: UploadedImage, isRetry = false) => {
+  const handleImageSelected = async (selectedImage: UploadedImage, destinationContext: DestinationContext, isRetry = false) => {
     if (!isRetry) {
       setImage(selectedImage);
+      setDestination(destinationContext);
       setView(AppState.ANALYZING);
       setError(null);
       setRetryCount(0);
@@ -148,9 +164,10 @@ const App: React.FC = () => {
     try {
       // Get user location and derive climate context
       const location = await getUserLocation();
-      const climateContext = location ? getClimateContext(location) : undefined;
+      const currentClimateContext = location ? getClimateContext(location) : undefined;
+      setClimateContext(currentClimateContext);
       
-      const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType, climateContext);
+      const analysis = await analyzeFit(selectedImage.base64, selectedImage.mimeType, currentClimateContext, destinationContext);
       
       // Set result and view FIRST - don't wait for save
       setResult(analysis);
@@ -185,7 +202,7 @@ const App: React.FC = () => {
 
   const handleRetry = () => {
     if (image) {
-      handleImageSelected(image, true);
+      handleImageSelected(image, destination, true);
     }
   };
 
@@ -317,19 +334,11 @@ const App: React.FC = () => {
               onReset={handleReset} 
               onChat={handleOpenChat}
               onGoHome={handleGoHome}
+              onViewMyFits={handleViewMyFits}
+              climateContext={climateContext}
             />
           )}
           
-          {/* Debug: Log when RESULT view should show but doesn't */}
-          {view === AppState.RESULT && (!image || !result) && (
-            console.error('[VIEW DEBUG] RESULT view requested but missing data:', {
-              view,
-              hasImage: !!image,
-              hasResult: !!result,
-              imageType: image ? typeof image : 'null',
-              resultType: result ? typeof result : 'null'
-            }) || null
-          )}
 
           {view === AppState.MY_FITS && (
             <MyFits 

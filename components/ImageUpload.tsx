@@ -1,18 +1,31 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Loader2, AlertCircle } from 'lucide-react';
-import { UploadedImage } from '../types';
+import { Camera, Loader2, AlertCircle, X } from 'lucide-react';
+import { UploadedImage, DestinationContext } from '../types';
 import { validateImageFile, compressImage } from '../utils/imageUtils';
 
 interface ImageUploadProps {
-  onImageSelected: (image: UploadedImage) => void;
+  onImageSelected: (image: UploadedImage, destination: DestinationContext) => void;
   onCancel: () => void;
 }
+
+const DESTINATION_OPTIONS: { value: DestinationContext; label: string }[] = [
+  { value: 'just-checking', label: 'Just Checking' },
+  { value: 'work-office', label: 'Work / Office' },
+  { value: 'date-night-out', label: 'Date / Night Out' },
+  { value: 'casual-hangout', label: 'Casual Hangout' },
+  { value: 'formal-event', label: 'Formal Event' },
+  { value: 'beach-outdoor', label: 'Beach / Outdoor' },
+  { value: 'gym-workout', label: 'Gym / Workout' },
+  { value: 'travel', label: 'Travel' },
+];
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCancel }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<string>('');
+  const [previewImage, setPreviewImage] = useState<UploadedImage | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<DestinationContext>(null);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -44,15 +57,18 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
       
       setProcessingProgress('Processing...');
       
-      // Small delay to show success state
-      setTimeout(() => {
-        onImageSelected({
+      // Store preview image and show preview state
+      const processedImage: UploadedImage = {
           previewUrl: compressed.previewUrl,
           mimeType: compressed.mimeType,
           base64: compressed.base64
-        });
+        };
+      
+      setTimeout(() => {
+        setPreviewImage(processedImage);
         setIsProcessing(false);
         setProcessingProgress('');
+        console.log('Preview image set, should show destination question');
       }, 300);
 
     } catch (err) {
@@ -73,10 +89,88 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
   };
 
   const triggerFileSelect = () => {
-    if (!isProcessing) {
+    if (!isProcessing && !previewImage) {
       fileInputRef.current?.click();
     }
   };
+
+  const handleAnalyze = () => {
+    if (previewImage) {
+      onImageSelected(previewImage, selectedDestination);
+    }
+  };
+
+  const handleReset = () => {
+    setPreviewImage(null);
+    setSelectedDestination(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Show preview state if image is selected
+  if (previewImage) {
+    return (
+      <div className="flex flex-col h-full p-6 animate-slide-up overflow-y-auto">
+        {/* Image Preview */}
+        <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden mb-4 border-2 border-drip-gray">
+          <img 
+            src={previewImage.previewUrl} 
+            alt="Preview" 
+            className="w-full h-full object-cover"
+          />
+          <button
+            onClick={handleReset}
+            className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 transition-colors"
+          >
+            <X className="text-white" size={20} />
+          </button>
+        </div>
+
+        {/* Optional Destination Question */}
+        <div className="space-y-3 mb-6">
+          <div className="text-center">
+            <p className="text-gray-300 text-sm mb-1">Where are you heading? <span className="text-gray-500">(optional)</span></p>
+            <p className="text-gray-500 text-xs">This helps us give you better recommendations</p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {DESTINATION_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedDestination(
+                  selectedDestination === option.value ? null : option.value
+                )}
+                className={`py-2.5 px-3 rounded-xl font-display font-bold text-sm transition-all text-left ${
+                  selectedDestination === option.value
+                    ? 'bg-drip-accent text-black'
+                    : 'bg-drip-dark border border-drip-gray text-gray-300 hover:bg-drip-gray/50'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Analyze Button */}
+        <button
+          onClick={handleAnalyze}
+          className="w-full py-4 bg-drip-accent text-black font-display font-bold text-lg rounded-xl hover:bg-drip-accent/80 transition-colors mb-3"
+        >
+          ANALYZE FIT
+        </button>
+
+        {/* Back Button */}
+        <button 
+          onClick={onCancel}
+          className="w-full py-4 font-bold font-display transition-colors text-gray-400 hover:text-white"
+        >
+          GO BACK
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full p-6 animate-slide-up">

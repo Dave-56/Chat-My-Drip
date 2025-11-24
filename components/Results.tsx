@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, MessageCircle, Home } from 'lucide-react';
-import { AnalysisResult, UploadedImage } from '../types';
+import { Share2, RefreshCw, AlertCircle, CheckCircle, ShoppingBag, MessageCircle, Home, FolderOpen } from 'lucide-react';
+import { AnalysisResult, UploadedImage, ClimateContext } from '../types';
 import { getShareableLink, getSavedOutfits } from '../utils/supabaseStorage';
 import { Toast } from './Toast';
 import { ShareMenu } from './ShareMenu';
@@ -12,6 +12,8 @@ interface ResultsProps {
   onReset: () => void;
   onChat: () => void;
   onGoHome?: () => void; // Optional function to go to landing page
+  onViewMyFits?: () => void; // Optional function to go to My Fits
+  climateContext?: ClimateContext;
 }
 
 // Helper to convert base64 data URL to File object
@@ -27,7 +29,7 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
   return new File([u8arr], filename, { type: mime });
 };
 
-export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome }) => {
+export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, onGoHome, onViewMyFits, climateContext }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
@@ -51,7 +53,9 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
   // Swipe left to go back/home
   const { ref: swipeRef, swipeProgress, isSwiping } = useSwipeGesture({
     onSwipeLeft: () => {
-      if (onGoHome) {
+      if (onViewMyFits) {
+        onViewMyFits();
+      } else if (onGoHome) {
         onGoHome();
       } else {
         onReset();
@@ -196,7 +200,14 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
         <div className="bg-gradient-to-br from-drip-dark to-drip-accent/10 p-5 rounded-xl border border-drip-accent/30">
           <div className="flex items-center gap-2 mb-3">
             <ShoppingBag className="text-drip-accent" size={20} />
-            <h3 className="font-bold text-white uppercase">Cop This to Fix</h3>
+            <div className="flex-1">
+              <h3 className="font-bold text-white uppercase">Cop This to Fix</h3>
+              {(climateContext === 'hot' || climateContext === 'cold') && (
+                <p className="text-gray-400 text-xs mt-0.5">
+                  Tailored for your {climateContext === 'hot' ? 'hot' : 'cold'} climate
+                </p>
+              )}
+            </div>
           </div>
            <ul className="space-y-2">
               {data.suggestions.map((item, i) => (
@@ -221,9 +232,24 @@ export const Results: React.FC<ResultsProps> = ({ image, data, onReset, onChat, 
 
           {/* Secondary Row */}
           <div className="flex gap-3">
+            {onViewMyFits && (
+              <button 
+                onClick={onViewMyFits}
+                className="flex-1 bg-drip-accent text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-drip-accent/80 transition-colors"
+              >
+                <FolderOpen size={20} />
+                MY FITS
+              </button>
+            )}
             <button 
-              onClick={onReset}
-              className="flex-1 bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors"
+              onClick={() => {
+                if (onViewMyFits) {
+                  onViewMyFits();
+                } else {
+                  onReset();
+                }
+              }}
+              className={`${onViewMyFits ? 'flex-1' : 'w-full'} bg-drip-gray text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 font-display hover:bg-gray-700 transition-colors`}
             >
               <RefreshCw size={20} />
               NEXT FIT
