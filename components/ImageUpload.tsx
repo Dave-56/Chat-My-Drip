@@ -26,6 +26,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
   const [processingProgress, setProcessingProgress] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<UploadedImage | null>(null);
   const [selectedDestination, setSelectedDestination] = useState<DestinationContext>(null);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customDestination, setCustomDestination] = useState('');
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -94,17 +96,36 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
     }
   };
 
-  const handleAnalyze = () => {
-    if (previewImage) {
-      onImageSelected(previewImage, selectedDestination);
-    }
-  };
 
   const handleReset = () => {
     setPreviewImage(null);
     setSelectedDestination(null);
+    setShowCustomInput(false);
+    setCustomDestination('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDestinationSelect = (value: DestinationContext) => {
+    if (value === 'custom') {
+      setShowCustomInput(true);
+      setSelectedDestination(null);
+      setCustomDestination('');
+    } else {
+      setShowCustomInput(false);
+      setSelectedDestination(value);
+      setCustomDestination('');
+    }
+  };
+
+  const handleAnalyzeWithDestination = () => {
+    if (previewImage) {
+      // Use custom destination if text input is shown and has value, otherwise use selected destination
+      const destination: DestinationContext = showCustomInput && customDestination.trim() 
+        ? customDestination.trim() 
+        : selectedDestination;
+      onImageSelected(previewImage, destination);
     }
   };
 
@@ -138,9 +159,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
             {DESTINATION_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setSelectedDestination(
-                  selectedDestination === option.value ? null : option.value
-                )}
+                onClick={() => {
+                  if (selectedDestination === option.value) {
+                    setSelectedDestination(null);
+                  } else {
+                    handleDestinationSelect(option.value);
+                  }
+                }}
                 className={`py-2.5 px-3 rounded-xl font-display font-bold text-sm transition-all text-left ${
                   selectedDestination === option.value
                     ? 'bg-drip-accent text-black'
@@ -150,12 +175,35 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
                 {option.label}
               </button>
             ))}
+            <button
+              onClick={() => handleDestinationSelect('custom')}
+              className={`py-2.5 px-3 rounded-xl font-display font-bold text-sm transition-all text-left ${
+                showCustomInput
+                  ? 'bg-drip-accent text-black'
+                  : 'bg-drip-dark border border-drip-gray text-gray-300 hover:bg-drip-gray/50'
+              }`}
+            >
+              Other
+            </button>
           </div>
+          
+          {showCustomInput && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={customDestination}
+                onChange={(e) => setCustomDestination(e.target.value)}
+                placeholder="Enter your destination..."
+                className="w-full py-2.5 px-4 rounded-xl bg-drip-dark border border-drip-gray text-white placeholder-gray-500 font-display focus:outline-none focus:border-drip-accent transition-colors"
+                autoFocus
+              />
+            </div>
+          )}
         </div>
 
         {/* Analyze Button */}
         <button
-          onClick={handleAnalyze}
+          onClick={handleAnalyzeWithDestination}
           className="w-full py-4 bg-drip-accent text-black font-display font-bold text-lg rounded-xl hover:bg-drip-accent/80 transition-colors mb-3"
         >
           ANALYZE FIT

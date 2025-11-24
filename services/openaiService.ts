@@ -3,7 +3,10 @@ import { AnalysisResult, ChatSession, ClimateContext, DestinationContext } from 
 import { withRetry, RetryableError, isNetworkError } from "../utils/errorRecovery";
 
 const getDestinationText = (destination: DestinationContext): string => {
-  const map: Record<NonNullable<DestinationContext>, string> = {
+  if (!destination) return '';
+  
+  // If it's a custom string (not in the predefined map), return it as-is
+  const map: Record<string, string> = {
     'just-checking': 'just checking their outfit',
     'work-office': 'going to work or the office',
     'date-night-out': 'going on a date or night out',
@@ -13,7 +16,14 @@ const getDestinationText = (destination: DestinationContext): string => {
     'gym-workout': 'going to the gym or working out',
     'travel': 'traveling',
   };
-  return destination ? map[destination] : '';
+  
+  // Check if it's a predefined destination
+  if (destination in map) {
+    return map[destination];
+  }
+  
+  // Otherwise, it's a custom destination string - use it directly
+  return destination;
 };
 
 // Debug: Check if API key is loaded

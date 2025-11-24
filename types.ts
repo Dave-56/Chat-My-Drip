@@ -30,6 +30,7 @@ export type DestinationContext =
   | 'beach-outdoor'
   | 'gym-workout'
   | 'travel'
+  | string // Custom destination text
   | null;
 
 export interface UploadedImage {
