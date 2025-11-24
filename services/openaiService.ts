@@ -106,12 +106,20 @@ export const analyzeFit = async (base64Image: string, mimeType: string, climateC
                 Factor destination appropriateness into your scoring - an outfit that's inappropriate for the destination should be penalized.` : ''}
                 
                 SCORING PHILOSOPHY (THIS IS CRITICAL):
-                - 1-3: Actually bad. Clashing colors, poor fit, no thought put in.
-                - 4-5: Average/mid. It's fine, nothing special. Most casual fits land here.
-                - 6: Decent. Above average, some thought put in, but not exceptional.
-                - 7: Good! Well-styled, cohesive, shows effort. This should feel like an achievement.
-                - 8-9: Fire. This is giving main character energy. Rare.
-                - 10: Perfect. Reserved for fits that are actually flawless and iconic.
+                
+                Score based on:
+                1. Aesthetic coherence (40%): Does everything work within the chosen aesthetic?
+                2. Destination appropriateness (30%): Is this appropriate for where they're going?
+                3. Weather appropriateness (20%): Will they be comfortable given the weather?
+                4. Intentional styling (10%): Does it look thought-out and well-executed?
+                
+                Score ranges:
+                - 1-3: Actually bad. Breaks aesthetic coherence, inappropriate for destination/weather, no thought put in.
+                - 4-5: Average/mid. Works within aesthetic but nothing special. Might be slightly off for destination or weather.
+                - 6: Decent. Cohesive aesthetic, mostly appropriate, some thought put in, but not exceptional.
+                - 7: Good! Well-styled, cohesive aesthetic, appropriate for destination/weather, shows effort. This should feel like an achievement.
+                - 8-9: Fire. Perfect aesthetic execution, destination-appropriate, weather-appropriate, giving main character energy. Rare.
+                - 10: Perfect. Flawless aesthetic coherence, perfect for destination and weather, iconic styling.
                 
                 CRITICAL: Before making any judgments, carefully observe and identify:
                 - Specific brands, logos, and luxury items (Bottega Veneta, Prada, Gucci, etc.)
