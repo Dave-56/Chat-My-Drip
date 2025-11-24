@@ -139,20 +139,22 @@ export const analyzeFit = async (base64Image: string, mimeType: string, climateC
                    - Don't say "fit could be more tailored" → Say "For this minimalist aesthetic, try straight-leg trousers instead of the current slim-fit jeans"
                    - Don't say "add accessories" → Say "A silver chain necklace or a crossbody bag would elevate this look"
                    - NEVER use vague terms like "more tailored" without specifying: tailored HOW? (straight-leg? tapered? slim-fit? relaxed-fit?)
+                   - CRITICAL: If you cannot provide SPECIFIC, actionable feedback, it's BETTER to have FEWER items (even 0) in misses/suggestions than to include vague feedback. Quality over quantity - no vague feedback is better than vague feedback.
                 7. Don't inflate scores. A basic hoodie and sweatpants combo is probably a 4-5, not a 7. Make users WORK for those high scores.
                 8. BEFORE SUGGESTING ITEMS: You MUST first identify every visible accessory, piece of jewelry, bag, hat, and footwear detail in the image. DO NOT suggest items that are already present. When suggesting items, be HIGHLY SPECIFIC:
                    - Instead of "sneakers" → "chunky white platform sneakers" or "minimalist leather sneakers" or "retro running shoes"
                    - Instead of "bag" → "black crossbody bag" or "tote bag" or "fanny pack"
                    - Instead of "pants" → "relaxed tapered jeans" or "straight-leg trousers" or "wide-leg cargo pants"
                    - Include brand examples when relevant (e.g., "Nike Dunk Lows," "Carhartt WIP pants," "Bottega Veneta bag")
+                   - If you cannot be this specific, DO NOT include that suggestion. Better to have 0-1 specific suggestions than 2 vague ones.
                 9. ${climateContext ? 'CLIMATE AWARENESS: All suggestions must be climate-appropriate. If climate context is provided, factor it heavily into your suggestions and scoring.' : ''}
                 10. Return the result as JSON matching this exact schema:
                 {
                   "score": number (1-10) - BE STRICT. Most fits are 4-6. Only exceptional fits get 7+,
                   "vibe": string,
                   "hits": string[] (2-3 SPECIFIC things that work - e.g., "the chunky white sneakers add streetwear edge" not just "nice shoes"),
-                  "misses": string[] (2-3 SPECIFIC things that don't work - be BRUTAL but SPECIFIC: Instead of "shoes are dated," say "Those 2010s running sneakers clash with streetwear - swap for chunky dad sneakers." Instead of "fit could be more tailored," specify what fit like "straight-leg would work better than slim-fit for this minimalist look"),
-                  "suggestions": string[] (1-2 HIGHLY SPECIFIC items, at most 2 - Instead of "sneakers," say "chunky white platform sneakers like New Balance 550s." Include brand examples when relevant. CRITICAL: Only suggest items NOT already visible in the image AND appropriate for the climate),
+                  "misses": string[] (2-3 SPECIFIC things that don't work - be BRUTAL but SPECIFIC: Instead of "shoes are dated," say "Those 2010s running sneakers clash with streetwear - swap for chunky dad sneakers." Instead of "fit could be more tailored," specify what fit like "straight-leg would work better than slim-fit for this minimalist look". IMPORTANT: If you cannot provide SPECIFIC, actionable feedback, it's better to have FEWER items (even 0-1) than to include vague feedback. Quality over quantity),
+                  "suggestions": string[] (1-2 HIGHLY SPECIFIC items, at most 2 - Instead of "sneakers," say "chunky white platform sneakers like New Balance 550s." Include brand examples when relevant. CRITICAL: Only suggest items NOT already visible in the image AND appropriate for the climate. IMPORTANT: If you cannot provide HIGHLY SPECIFIC suggestions with brand examples or exact types, it's better to have FEWER items (even 0) than to include vague suggestions. Quality over quantity),
                   "verdict": string (BRUTAL but playful one-sentence summary)
                 }`,
                 },

@@ -42,12 +42,12 @@ const responseSchema: Schema = {
     misses: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List 2-3 SPECIFIC things that break the vibe, clash with the aesthetic, or don't match the destination context. BE SPECIFIC: Instead of 'shoes are dated,' say 'Those 2010s running sneakers clash with streetwear - swap for chunky dad sneakers.' Instead of 'fit could be more tailored,' specify what fit (e.g., 'straight-leg would work better than slim-fit for this minimalist look'). CRITICAL: Do NOT penalize intentional styling choices (like baggy fits, oversized pieces, etc.) that are part of the aesthetic. Only call out things that genuinely break coherence or are inappropriate for the destination/weather.",
+      description: "List 2-3 SPECIFIC things that break the vibe, clash with the aesthetic, or don't match the destination context. BE SPECIFIC: Instead of 'shoes are dated,' say 'Those 2010s running sneakers clash with streetwear - swap for chunky dad sneakers.' Instead of 'fit could be more tailored,' specify what fit (e.g., 'straight-leg would work better than slim-fit for this minimalist look'). CRITICAL: Do NOT penalize intentional styling choices (like baggy fits, oversized pieces, etc.) that are part of the aesthetic. Only call out things that genuinely break coherence or are inappropriate for the destination/weather. IMPORTANT: If you cannot provide SPECIFIC, actionable feedback, it's better to have FEWER items (even 0-1) than to include vague feedback. Quality over quantity.",
     },
     suggestions: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List 1-2 HIGHLY SPECIFIC items (at most 2) that would elevate this look. BE EXTREMELY SPECIFIC: Instead of 'sneakers,' say 'chunky white platform sneakers like New Balance 550s' or 'minimalist leather sneakers like Common Projects.' Instead of 'bag,' say 'black crossbody bag' or 'tote bag.' Include brand examples when relevant. CRITICAL: Before suggesting, carefully identify ALL visible accessories and jewelry in the image (necklaces, pendants, bracelets, rings, earrings, bags, hats, etc.). DO NOT suggest items that are already present. Only suggest items that would genuinely ADD to or ELEVATE the look while respecting the aesthetic and destination context.",
+      description: "List 1-2 HIGHLY SPECIFIC items (at most 2) that would elevate this look. BE EXTREMELY SPECIFIC: Instead of 'sneakers,' say 'chunky white platform sneakers like New Balance 550s' or 'minimalist leather sneakers like Common Projects.' Instead of 'bag,' say 'black crossbody bag' or 'tote bag.' Include brand examples when relevant. CRITICAL: Before suggesting, carefully identify ALL visible accessories and jewelry in the image (necklaces, pendants, bracelets, rings, earrings, bags, hats, etc.). DO NOT suggest items that are already present. Only suggest items that would genuinely ADD to or ELEVATE the look while respecting the aesthetic and destination context. IMPORTANT: If you cannot provide HIGHLY SPECIFIC suggestions with brand examples or exact types, it's better to have FEWER items (even 0) than to include vague suggestions like 'sneakers' or 'bag'. Quality over quantity.",
     },
     verdict: {
       type: Type.STRING,
@@ -168,12 +168,14 @@ export const analyzeFit = async (base64Image: string, mimeType: string, climateC
                    - Don't say "shoes are dated" → Say "Those 2010s running sneakers clash with your streetwear vibe - swap for chunky New Balance 550s or Nike Dunk Lows"
                    - Don't say "fit could be more tailored" → Say "For this minimalist aesthetic, try straight-leg trousers instead of the current slim-fit jeans"
                    - Don't say "add accessories" → Say "A silver chain necklace or a crossbody bag would elevate this look"
+                   - CRITICAL: If you cannot provide SPECIFIC, actionable feedback, it's BETTER to have FEWER items (even 0) in misses/suggestions than to include vague feedback. Quality over quantity - no vague feedback is better than vague feedback.
                 7. Don't inflate scores. A basic hoodie and sweatpants combo that's cohesive and appropriate might be a 5-6, not a 7. Make users WORK for those high scores.
                 8. BEFORE SUGGESTING ITEMS: You MUST first identify every visible accessory, piece of jewelry, bag, hat, and footwear detail in the image. DO NOT suggest items that are already present. When suggesting items, be HIGHLY SPECIFIC:
                    - Instead of "sneakers" → "chunky white platform sneakers" or "minimalist leather sneakers" or "retro running shoes"
                    - Instead of "bag" → "black crossbody bag" or "tote bag" or "fanny pack"
                    - Instead of "pants" → "relaxed tapered jeans" or "straight-leg trousers" or "wide-leg cargo pants"
                    - Include brand examples when relevant (e.g., "Nike Dunk Lows," "Carhartt WIP pants," "Bottega Veneta bag")
+                   - If you cannot be this specific, DO NOT include that suggestion. Better to have 0-1 specific suggestions than 2 vague ones.
                 9. VIBE MATCHING IS KEY: Evaluate if the bag matches the vibe, if accessories work together, if everything is cohesive. This is more important than traditional fashion rules.
                 10. REMEMBER: Baggy fits are VALID. Oversized is VALID. Wide-leg is VALID. Don't suggest "more tailored" unless you SPECIFICALLY mean a different fit style (e.g., "try straight-leg instead of baggy" or "relaxed-fit would work better than oversized here").
                 11. Return the result as JSON matching the schema.
