@@ -10,7 +10,6 @@ interface ImageUploadProps {
 
 const DESTINATION_OPTIONS: { value: DestinationContext; label: string }[] = [
   { value: 'just-checking', label: 'Just Checking' },
-  { value: 'work-office', label: 'Work / Office' },
   { value: 'date-night-out', label: 'Date / Night Out' },
   { value: 'casual-hangout', label: 'Casual Hangout' },
 ];
