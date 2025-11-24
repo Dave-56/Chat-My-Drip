@@ -13,10 +13,6 @@ const DESTINATION_OPTIONS: { value: DestinationContext; label: string }[] = [
   { value: 'work-office', label: 'Work / Office' },
   { value: 'date-night-out', label: 'Date / Night Out' },
   { value: 'casual-hangout', label: 'Casual Hangout' },
-  { value: 'formal-event', label: 'Formal Event' },
-  { value: 'beach-outdoor', label: 'Beach / Outdoor' },
-  { value: 'gym-workout', label: 'Gym / Workout' },
-  { value: 'travel', label: 'Travel' },
 ];
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCancel }) => {
@@ -193,7 +189,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onCan
                 type="text"
                 value={customDestination}
                 onChange={(e) => setCustomDestination(e.target.value)}
-                placeholder="Enter your destination..."
+                placeholder="where you headed?"
                 className="w-full py-2.5 px-4 rounded-xl bg-drip-dark border border-drip-gray text-white placeholder-gray-500 font-display focus:outline-none focus:border-drip-accent transition-colors"
                 autoFocus
               />
