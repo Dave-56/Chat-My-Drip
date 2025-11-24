@@ -47,7 +47,7 @@ const responseSchema: Schema = {
     suggestions: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List 2 specific items that would elevate this look within its aesthetic OR make it more appropriate for the destination. CRITICAL: Before suggesting, carefully identify ALL visible accessories and jewelry in the image (necklaces, pendants, bracelets, rings, earrings, bags, hats, etc.). DO NOT suggest items that are already present. Only suggest items that would genuinely ADD to or ELEVATE the look while respecting the aesthetic and destination context.",
+      description: "List 1-2 specific items (at most 2) that would elevate this look within its aesthetic OR make it more appropriate for the destination. CRITICAL: Before suggesting, carefully identify ALL visible accessories and jewelry in the image (necklaces, pendants, bracelets, rings, earrings, bags, hats, etc.). DO NOT suggest items that are already present. Only suggest items that would genuinely ADD to or ELEVATE the look while respecting the aesthetic and destination context.",
     },
     verdict: {
       type: Type.STRING,

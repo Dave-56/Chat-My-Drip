@@ -136,7 +136,7 @@ export const analyzeFit = async (base64Image: string, mimeType: string, climateC
                   "vibe": string,
                   "hits": string[] (2-3 things that work),
                   "misses": string[] (2-3 things that don't work - be BRUTAL),
-                  "suggestions": string[] (2 items - CRITICAL: Only suggest items NOT already visible in the image AND appropriate for the climate),
+                  "suggestions": string[] (1-2 items, at most 2 - CRITICAL: Only suggest items NOT already visible in the image AND appropriate for the climate),
                   "verdict": string (BRUTAL but playful one-sentence summary)
                 }`,
                 },
