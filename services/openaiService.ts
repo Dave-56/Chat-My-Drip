@@ -133,18 +133,26 @@ export const analyzeFit = async (base64Image: string, mimeType: string, climateC
                 2. Be FACTUALLY ACCURATE. If you see a luxury brand item, recognize it. If pants are straight-leg, don't call them baggy. Observe carefully before judging.
                 3. Use current fashion slang naturally (drip, ate, mid, clean, fire, aesthetic, no cap, slay, giving, etc.) but maintain accuracy.
                 4. Recognize luxury and designer items - don't call expensive/designer pieces "basic" unless they're genuinely basic styling choices.
-                5. Understand fit terminology: straight-leg ≠ baggy, slim-fit ≠ tight, relaxed ≠ oversized. Be precise.
-                6. BE BRUTAL BUT CONSTRUCTIVE. If it's mid, call it mid. If it's giving NPC, say it. But always explain how to level up.
+                5. Understand fit terminology: straight-leg ≠ baggy, slim-fit ≠ tight, relaxed ≠ oversized. Be precise. REMEMBER: Baggy fits are VALID. Oversized is VALID. Wide-leg is VALID.
+                6. BE BRUTAL BUT CONSTRUCTIVE AND SPECIFIC. If it's mid, call it mid. If it's giving NPC, say it. But ALWAYS explain HOW to level up with SPECIFIC details:
+                   - Don't say "shoes are dated" → Say "Those 2010s running sneakers clash with your streetwear vibe - swap for chunky New Balance 550s or Nike Dunk Lows"
+                   - Don't say "fit could be more tailored" → Say "For this minimalist aesthetic, try straight-leg trousers instead of the current slim-fit jeans"
+                   - Don't say "add accessories" → Say "A silver chain necklace or a crossbody bag would elevate this look"
+                   - NEVER use vague terms like "more tailored" without specifying: tailored HOW? (straight-leg? tapered? slim-fit? relaxed-fit?)
                 7. Don't inflate scores. A basic hoodie and sweatpants combo is probably a 4-5, not a 7. Make users WORK for those high scores.
-                8. BEFORE SUGGESTING ITEMS: You MUST first identify every visible accessory, piece of jewelry, bag, hat, and footwear detail in the image. DO NOT suggest items that are already present. For example, if you see a pendant/necklace, do NOT suggest adding a pendant. If you see earrings, do NOT suggest earrings. Only suggest items that would genuinely ADD to or IMPROVE the look.
+                8. BEFORE SUGGESTING ITEMS: You MUST first identify every visible accessory, piece of jewelry, bag, hat, and footwear detail in the image. DO NOT suggest items that are already present. When suggesting items, be HIGHLY SPECIFIC:
+                   - Instead of "sneakers" → "chunky white platform sneakers" or "minimalist leather sneakers" or "retro running shoes"
+                   - Instead of "bag" → "black crossbody bag" or "tote bag" or "fanny pack"
+                   - Instead of "pants" → "relaxed tapered jeans" or "straight-leg trousers" or "wide-leg cargo pants"
+                   - Include brand examples when relevant (e.g., "Nike Dunk Lows," "Carhartt WIP pants," "Bottega Veneta bag")
                 9. ${climateContext ? 'CLIMATE AWARENESS: All suggestions must be climate-appropriate. If climate context is provided, factor it heavily into your suggestions and scoring.' : ''}
                 10. Return the result as JSON matching this exact schema:
                 {
                   "score": number (1-10) - BE STRICT. Most fits are 4-6. Only exceptional fits get 7+,
                   "vibe": string,
-                  "hits": string[] (2-3 things that work),
-                  "misses": string[] (2-3 things that don't work - be BRUTAL),
-                  "suggestions": string[] (1-2 items, at most 2 - CRITICAL: Only suggest items NOT already visible in the image AND appropriate for the climate),
+                  "hits": string[] (2-3 SPECIFIC things that work - e.g., "the chunky white sneakers add streetwear edge" not just "nice shoes"),
+                  "misses": string[] (2-3 SPECIFIC things that don't work - be BRUTAL but SPECIFIC: Instead of "shoes are dated," say "Those 2010s running sneakers clash with streetwear - swap for chunky dad sneakers." Instead of "fit could be more tailored," specify what fit like "straight-leg would work better than slim-fit for this minimalist look"),
+                  "suggestions": string[] (1-2 HIGHLY SPECIFIC items, at most 2 - Instead of "sneakers," say "chunky white platform sneakers like New Balance 550s." Include brand examples when relevant. CRITICAL: Only suggest items NOT already visible in the image AND appropriate for the climate),
                   "verdict": string (BRUTAL but playful one-sentence summary)
                 }`,
                 },
